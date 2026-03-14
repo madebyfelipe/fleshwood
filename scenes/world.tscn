@@ -1,0 +1,903 @@
+[gd_scene format=3 uid="uid://xb05xi04rmnq"]
+
+[ext_resource type="Script" uid="uid://cfjjodp43s6k3" path="res://scripts/world.gd" id="1_4l7cb"]
+[ext_resource type="PackedScene" uid="uid://b3jjt6ihyn81r" path="res://scenes/player.tscn" id="2_n3q1y"]
+[ext_resource type="AudioStream" uid="uid://dkv3wqju4p8xk" path="res://assets/sfx/Crickets.mp3" id="3_fdr2u"]
+[ext_resource type="PackedScene" path="res://scenes/tree_source.tscn" id="4_tree"]
+[ext_resource type="PackedScene" path="res://scenes/vendor.tscn" id="5_vendor"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_world_h"]
+size = Vector2(1280, 32)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_world_v"]
+size = Vector2(30, 1421)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_house_top"]
+size = Vector2(320, 224)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_house_bottom"]
+size = Vector2(128, 32)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_inner_top"]
+size = Vector2(320, 32)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_inner_side"]
+size = Vector2(32, 207.7262)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_door"]
+size = Vector2(64, 32)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_well"]
+radius = 34.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_rwgxs"]
+size = Vector2(28, 28)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_seedbag"]
+size = Vector2(60, 60)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sellbox"]
+size = Vector2(64, 56)
+
+[node name="World" type="Node2D" unique_id=1963907544]
+script = ExtResource("1_4l7cb")
+
+[node name="TileMap" type="TileMap" parent="." unique_id=1652934505]
+format = 2
+
+[node name="WorldVisuals" type="Node2D" parent="." unique_id=1140902787]
+
+[node name="Ground" type="Polygon2D" parent="WorldVisuals" unique_id=229805043]
+scale = Vector2(1, 1.5471255)
+color = Color(0.32549, 0.501961, 0.337255, 1)
+polygon = PackedVector2Array(0, 0, 1280, 0, 1280, 896, 0, 896)
+
+[node name="HouseExterior" type="Polygon2D" parent="WorldVisuals" unique_id=346678297]
+position = Vector2(384, 288)
+color = Color(0.47451, 0.180392, 0.254902, 1)
+polygon = PackedVector2Array(-160, -128, 160, -128, 160, 128, -160, 128)
+
+[node name="HouseExteriorDoor" type="Polygon2D" parent="WorldVisuals" unique_id=784485360]
+position = Vector2(384, 400)
+color = Color(0.372549, 0.243137, 0.176471, 1)
+polygon = PackedVector2Array(-32, -16, 32, -16, 32, 16, -32, 16)
+
+[node name="FarmPath" type="Polygon2D" parent="WorldVisuals" unique_id=1354692025]
+position = Vector2(530, 507.6723)
+scale = Vector2(1, 0.57027036)
+color = Color(0.556863, 0.447059, 0.294118, 1)
+polygon = PackedVector2Array(-103.3545, -156.39003, -104.71256, 263.60776, -149.25983, 263.4637, -192.7121, 263.3232, -191.35403, -156.67458)
+uv = PackedVector2Array(-176, -159, -112, -160, -108, 46, -210, 44, -189, -41)
+
+[node name="InteriorVoid" type="Polygon2D" parent="WorldVisuals" unique_id=1660100464]
+position = Vector2(1856, 288)
+color = Color(0.109804, 0.109804, 0.141176, 1)
+polygon = PackedVector2Array(-196, -164, 196, -164, 196, 164, -196, 164)
+
+[node name="HouseInterior" type="Polygon2D" parent="WorldVisuals" unique_id=2112008696]
+position = Vector2(1856, 288)
+color = Color(0.721569, 0.635294, 0.478431, 1)
+polygon = PackedVector2Array(-160, -128, 160, -128, 160, 128, -160, 128)
+
+[node name="HouseInteriorDoor" type="Polygon2D" parent="WorldVisuals" unique_id=1034316624]
+position = Vector2(1856, 400)
+color = Color(0.372549, 0.243137, 0.176471, 1)
+polygon = PackedVector2Array(-32, -16, 32, -16, 32, 16, -32, 16)
+
+[node name="Colliders" type="Node2D" parent="." unique_id=837642428]
+
+[node name="WorldTop" type="StaticBody2D" parent="Colliders" unique_id=885010572]
+position = Vector2(640, -16)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/WorldTop" unique_id=1477545995]
+shape = SubResource("RectangleShape2D_world_h")
+
+[node name="WorldBottom" type="StaticBody2D" parent="Colliders" unique_id=1539066207]
+position = Vector2(640, 1402)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/WorldBottom" unique_id=92405874]
+shape = SubResource("RectangleShape2D_world_h")
+
+[node name="WorldLeft" type="StaticBody2D" parent="Colliders" unique_id=1158154507]
+position = Vector2(-16, 448)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/WorldLeft" unique_id=1121701371]
+position = Vector2(-1, 262.5)
+shape = SubResource("RectangleShape2D_world_v")
+
+[node name="WorldRight" type="StaticBody2D" parent="Colliders" unique_id=1022616579]
+position = Vector2(1296, 448)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/WorldRight" unique_id=497457132]
+position = Vector2(0, 232)
+shape = SubResource("RectangleShape2D_world_v")
+
+[node name="ExteriorHouseTop" type="StaticBody2D" parent="Colliders" unique_id=329594483]
+position = Vector2(384, 272)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/ExteriorHouseTop" unique_id=216523720]
+shape = SubResource("RectangleShape2D_house_top")
+
+[node name="ExteriorHouseBottomLeft" type="StaticBody2D" parent="Colliders" unique_id=877697469]
+position = Vector2(288, 400)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/ExteriorHouseBottomLeft" unique_id=351965376]
+shape = SubResource("RectangleShape2D_house_bottom")
+
+[node name="ExteriorHouseBottomRight" type="StaticBody2D" parent="Colliders" unique_id=1155580809]
+position = Vector2(480, 400)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/ExteriorHouseBottomRight" unique_id=709265606]
+shape = SubResource("RectangleShape2D_house_bottom")
+
+[node name="InteriorHouseTop" type="StaticBody2D" parent="Colliders" unique_id=330357595]
+position = Vector2(1856, 160)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/InteriorHouseTop" unique_id=2073561919]
+position = Vector2(0, -16)
+shape = SubResource("RectangleShape2D_inner_top")
+
+[node name="InteriorHouseLeft" type="StaticBody2D" parent="Colliders" unique_id=1731774088]
+position = Vector2(1712, 288)
+scale = Vector2(1, 1.24)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/InteriorHouseLeft" unique_id=978815888]
+position = Vector2(-32, 0.9756012)
+shape = SubResource("RectangleShape2D_inner_side")
+
+[node name="InteriorHouseRight" type="StaticBody2D" parent="Colliders" unique_id=197638336]
+position = Vector2(2000, 288)
+scale = Vector2(1, 1.3200024)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/InteriorHouseRight" unique_id=568469492]
+position = Vector2(32, 0.27279663)
+shape = SubResource("RectangleShape2D_inner_side")
+
+[node name="InteriorHouseBottomLeft" type="StaticBody2D" parent="Colliders" unique_id=1669117282]
+position = Vector2(1760, 400)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/InteriorHouseBottomLeft" unique_id=1116373077]
+position = Vector2(0, 32)
+shape = SubResource("RectangleShape2D_house_bottom")
+
+[node name="InteriorHouseBottomRight" type="StaticBody2D" parent="Colliders" unique_id=1992942347]
+position = Vector2(1952, 400)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/InteriorHouseBottomRight" unique_id=1843945728]
+position = Vector2(0, 32)
+shape = SubResource("RectangleShape2D_house_bottom")
+
+[node name="Markers" type="Node2D" parent="." unique_id=962538654]
+
+[node name="OutsideSpawn" type="Marker2D" parent="Markers" unique_id=2021064131]
+position = Vector2(416, 528)
+
+[node name="InsideSpawn" type="Marker2D" parent="Markers" unique_id=1512569303]
+position = Vector2(1856, 336)
+
+[node name="EnemySpawn" type="Marker2D" parent="Markers" unique_id=104536392]
+position = Vector2(574, 878)
+
+[node name="EnemyRoute" type="Node2D" parent="Markers" unique_id=1807570352]
+
+[node name="Point1" type="Marker2D" parent="Markers/EnemyRoute" unique_id=1988167888]
+position = Vector2(672, 912)
+
+[node name="Point2" type="Marker2D" parent="Markers/EnemyRoute" unique_id=1718099534]
+position = Vector2(676, 1052)
+
+[node name="Point3" type="Marker2D" parent="Markers/EnemyRoute" unique_id=242288574]
+position = Vector2(590, 1144)
+
+[node name="Point4" type="Marker2D" parent="Markers/EnemyRoute" unique_id=1064868782]
+position = Vector2(474, 1172)
+
+[node name="Point5" type="Marker2D" parent="Markers/EnemyRoute" unique_id=1795364780]
+position = Vector2(354, 1140)
+
+[node name="Point6" type="Marker2D" parent="Markers/EnemyRoute" unique_id=260302335]
+position = Vector2(270, 1056)
+
+[node name="Point7" type="Marker2D" parent="Markers/EnemyRoute" unique_id=927813924]
+position = Vector2(272, 918)
+
+[node name="Point8" type="Marker2D" parent="Markers/EnemyRoute" unique_id=313218187]
+position = Vector2(382, 858)
+
+[node name="OutsideDoor" type="Area2D" parent="." unique_id=427238742]
+position = Vector2(384, 400)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="OutsideDoor" unique_id=1385321471]
+shape = SubResource("RectangleShape2D_door")
+
+[node name="InsideDoor" type="Area2D" parent="." unique_id=1057470766]
+position = Vector2(1856, 400)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InsideDoor" unique_id=1835238881]
+position = Vector2(0, 32)
+shape = SubResource("RectangleShape2D_door")
+
+[node name="Player" parent="." unique_id=1014247065 instance=ExtResource("2_n3q1y")]
+
+[node name="Trees" type="Node2D" parent="." unique_id=2072935654]
+
+[node name="Tree01" parent="Trees" unique_id=1636652990 instance=ExtResource("4_tree")]
+position = Vector2(80, 96)
+
+[node name="Tree02" parent="Trees" unique_id=305154565 instance=ExtResource("4_tree")]
+position = Vector2(200, 88)
+
+[node name="Tree03" parent="Trees" unique_id=1733117556 instance=ExtResource("4_tree")]
+position = Vector2(320, 84)
+
+[node name="Tree04" parent="Trees" unique_id=1745746428 instance=ExtResource("4_tree")]
+position = Vector2(448, 82)
+
+[node name="Tree05" parent="Trees" unique_id=362253057 instance=ExtResource("4_tree")]
+position = Vector2(576, 80)
+
+[node name="Tree06" parent="Trees" unique_id=1852192 instance=ExtResource("4_tree")]
+position = Vector2(704, 82)
+
+[node name="Tree07" parent="Trees" unique_id=406866622 instance=ExtResource("4_tree")]
+position = Vector2(832, 84)
+
+[node name="Tree08" parent="Trees" unique_id=1035746794 instance=ExtResource("4_tree")]
+position = Vector2(960, 88)
+
+[node name="Tree09" parent="Trees" unique_id=1445321782 instance=ExtResource("4_tree")]
+position = Vector2(1088, 96)
+
+[node name="Tree10" parent="Trees" unique_id=753030806 instance=ExtResource("4_tree")]
+position = Vector2(64, 260)
+
+[node name="Tree11" parent="Trees" unique_id=1087663184 instance=ExtResource("4_tree")]
+position = Vector2(56, 420)
+
+[node name="Tree12" parent="Trees" unique_id=520698292 instance=ExtResource("4_tree")]
+position = Vector2(52, 580)
+
+[node name="Tree13" parent="Trees" unique_id=789379939 instance=ExtResource("4_tree")]
+position = Vector2(58, 740)
+
+[node name="Tree14" parent="Trees" unique_id=1541288132 instance=ExtResource("4_tree")]
+position = Vector2(64, 900)
+
+[node name="Tree15" parent="Trees" unique_id=928549879 instance=ExtResource("4_tree")]
+position = Vector2(72, 1060)
+
+[node name="Tree16" parent="Trees" unique_id=573134862 instance=ExtResource("4_tree")]
+position = Vector2(80, 1220)
+
+[node name="Tree17" parent="Trees" unique_id=2053700392 instance=ExtResource("4_tree")]
+position = Vector2(1216, 260)
+
+[node name="Tree18" parent="Trees" unique_id=745704775 instance=ExtResource("4_tree")]
+position = Vector2(1224, 420)
+
+[node name="Tree19" parent="Trees" unique_id=1208928283 instance=ExtResource("4_tree")]
+position = Vector2(1228, 580)
+
+[node name="Tree20" parent="Trees" unique_id=743831727 instance=ExtResource("4_tree")]
+position = Vector2(1222, 740)
+
+[node name="Tree21" parent="Trees" unique_id=1872133814 instance=ExtResource("4_tree")]
+position = Vector2(1216, 900)
+
+[node name="Tree22" parent="Trees" unique_id=1007556470 instance=ExtResource("4_tree")]
+position = Vector2(1208, 1060)
+
+[node name="Tree23" parent="Trees" unique_id=1880622512 instance=ExtResource("4_tree")]
+position = Vector2(1200, 1220)
+
+[node name="Tree24" parent="Trees" unique_id=1086390717 instance=ExtResource("4_tree")]
+position = Vector2(160, 1330)
+
+[node name="Tree25" parent="Trees" unique_id=1896973698 instance=ExtResource("4_tree")]
+position = Vector2(320, 1340)
+
+[node name="Tree26" parent="Trees" unique_id=1713223671 instance=ExtResource("4_tree")]
+position = Vector2(480, 1344)
+
+[node name="Tree27" parent="Trees" unique_id=708228157 instance=ExtResource("4_tree")]
+position = Vector2(640, 1344)
+
+[node name="Tree28" parent="Trees" unique_id=1599789736 instance=ExtResource("4_tree")]
+position = Vector2(800, 1342)
+
+[node name="Tree29" parent="Trees" unique_id=1971222376 instance=ExtResource("4_tree")]
+position = Vector2(960, 1338)
+
+[node name="Tree30" parent="Trees" unique_id=34230945 instance=ExtResource("4_tree")]
+position = Vector2(1120, 1330)
+
+[node name="Tree31" parent="Trees" unique_id=423841227 instance=ExtResource("4_tree")]
+position = Vector2(88, 824)
+
+[node name="Tree32" parent="Trees" unique_id=2077408193 instance=ExtResource("4_tree")]
+position = Vector2(86, 184)
+
+[node name="Tree33" parent="Trees" unique_id=71116924 instance=ExtResource("4_tree")]
+position = Vector2(89, 353)
+
+[node name="Tree34" parent="Trees" unique_id=1582516685 instance=ExtResource("4_tree")]
+position = Vector2(83, 516)
+
+[node name="Tree35" parent="Trees" unique_id=606077247 instance=ExtResource("4_tree")]
+position = Vector2(1170, 1144)
+
+[node name="Tree36" parent="Trees" unique_id=183708914 instance=ExtResource("4_tree")]
+position = Vector2(1113, 1256)
+
+[node name="Tree37" parent="Trees" unique_id=1358819297 instance=ExtResource("4_tree")]
+position = Vector2(1168, 985)
+
+[node name="Tree38" parent="Trees" unique_id=1085219785 instance=ExtResource("4_tree")]
+position = Vector2(1177, 495)
+
+[node name="Tree34" parent="Trees/Tree38" unique_id=1297951993 instance=ExtResource("4_tree")]
+position = Vector2(10, 327)
+
+[node name="Tree34" parent="Trees/Tree38/Tree34" unique_id=1037901075 instance=ExtResource("4_tree")]
+position = Vector2(57, 327)
+
+[node name="Tree34" parent="Trees/Tree38/Tree34/Tree34" unique_id=1288428221 instance=ExtResource("4_tree")]
+position = Vector2(-242, 102)
+
+[node name="Tree34" parent="Trees/Tree38/Tree34/Tree34/Tree34" unique_id=1055704037 instance=ExtResource("4_tree")]
+position = Vector2(192, -1167)
+
+[node name="Tree34" parent="Trees/Tree38/Tree34/Tree34/Tree34/Tree34" unique_id=1185427301 instance=ExtResource("4_tree")]
+position = Vector2(-55, 98)
+
+[node name="Tree34" parent="Trees/Tree38/Tree34/Tree34/Tree34/Tree34/Tree34" unique_id=295298773 instance=ExtResource("4_tree")]
+position = Vector2(14, 152)
+
+[node name="Well" type="Area2D" parent="." unique_id=2106015635]
+position = Vector2(382, 1027)
+
+[node name="Visual" type="Polygon2D" parent="Well" unique_id=1359455766]
+color = Color(0.301961, 0.368627, 0.478431, 1)
+polygon = PackedVector2Array(-24, -12, -16, -32, 16, -32, 24, -12, 24, 18, -24, 18)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Well" unique_id=522514272]
+shape = SubResource("CircleShape2D_well")
+
+[node name="CropField" type="Node2D" parent="." unique_id=1367785024]
+position = Vector2(474, 1005)
+
+[node name="Plots" type="Node2D" parent="CropField" unique_id=1546746771]
+
+[node name="Plot_0_0" type="Area2D" parent="CropField/Plots" unique_id=1001098353]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_0_0" unique_id=512541055]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_0_0" unique_id=1774318767]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_0_0" unique_id=864497620]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_1_0" type="Area2D" parent="CropField/Plots" unique_id=1837713419]
+position = Vector2(40, 0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_1_0" unique_id=89157135]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_1_0" unique_id=1346526572]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_1_0" unique_id=1817702694]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_2_0" type="Area2D" parent="CropField/Plots" unique_id=92206960]
+position = Vector2(80, 0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_2_0" unique_id=425013810]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_2_0" unique_id=3706154]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_2_0" unique_id=1604136305]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_3_0" type="Area2D" parent="CropField/Plots" unique_id=956792658]
+position = Vector2(120, 0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_3_0" unique_id=72700001]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_3_0" unique_id=1888044911]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_3_0" unique_id=1799944506]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_4_0" type="Area2D" parent="CropField/Plots" unique_id=1463619251]
+position = Vector2(160, 0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_4_0" unique_id=1981552100]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_4_0" unique_id=382623495]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_4_0" unique_id=1767790278]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_5_0" type="Area2D" parent="CropField/Plots" unique_id=1450628782]
+position = Vector2(200, 0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_5_0" unique_id=1897444210]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_5_0" unique_id=929277901]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_5_0" unique_id=1154197700]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_0_1" type="Area2D" parent="CropField/Plots" unique_id=1249304006]
+position = Vector2(0, 40)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_0_1" unique_id=1735060524]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_0_1" unique_id=1526012363]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_0_1" unique_id=1559855058]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_1_1" type="Area2D" parent="CropField/Plots" unique_id=1163322861]
+position = Vector2(40, 40)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_1_1" unique_id=643659313]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_1_1" unique_id=484153770]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_1_1" unique_id=976196124]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_2_1" type="Area2D" parent="CropField/Plots" unique_id=1210694762]
+position = Vector2(80, 40)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_2_1" unique_id=1921555384]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_2_1" unique_id=358100202]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_2_1" unique_id=1174719387]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_3_1" type="Area2D" parent="CropField/Plots" unique_id=1094212631]
+position = Vector2(120, 40)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_3_1" unique_id=1767687333]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_3_1" unique_id=196842071]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_3_1" unique_id=469407332]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_4_1" type="Area2D" parent="CropField/Plots" unique_id=2128583437]
+position = Vector2(160, 40)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_4_1" unique_id=1222597993]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_4_1" unique_id=1004433938]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_4_1" unique_id=317664277]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_5_1" type="Area2D" parent="CropField/Plots" unique_id=1646754997]
+position = Vector2(200, 40)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_5_1" unique_id=1679649917]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_5_1" unique_id=690755514]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_5_1" unique_id=1544878706]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_0_2" type="Area2D" parent="CropField/Plots" unique_id=556736675]
+position = Vector2(0, 80)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_0_2" unique_id=1421120347]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_0_2" unique_id=68686370]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_0_2" unique_id=1420618092]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_1_2" type="Area2D" parent="CropField/Plots" unique_id=286200449]
+position = Vector2(40, 80)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_1_2" unique_id=1985775627]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_1_2" unique_id=654766662]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_1_2" unique_id=1182340545]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_2_2" type="Area2D" parent="CropField/Plots" unique_id=2008085290]
+position = Vector2(80, 80)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_2_2" unique_id=1714096470]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_2_2" unique_id=2104814734]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_2_2" unique_id=462143929]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_3_2" type="Area2D" parent="CropField/Plots" unique_id=532972930]
+position = Vector2(120, 80)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_3_2" unique_id=294542452]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_3_2" unique_id=1946156916]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_3_2" unique_id=1204751642]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_4_2" type="Area2D" parent="CropField/Plots" unique_id=580561005]
+position = Vector2(160, 80)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_4_2" unique_id=175172695]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_4_2" unique_id=1070172153]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_4_2" unique_id=1966797876]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="Plot_5_2" type="Area2D" parent="CropField/Plots" unique_id=819910363]
+position = Vector2(200, 80)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CropField/Plots/Plot_5_2" unique_id=1321556514]
+shape = SubResource("RectangleShape2D_rwgxs")
+
+[node name="Soil" type="Polygon2D" parent="CropField/Plots/Plot_5_2" unique_id=475333281]
+color = Color(0.384314, 0.27451, 0.188235, 1)
+polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+[node name="Crop" type="Polygon2D" parent="CropField/Plots/Plot_5_2" unique_id=814603850]
+visible = false
+color = Color(0.447059, 0.647059, 0.266667, 1)
+polygon = PackedVector2Array(-10, 10, -6, -4, 0, -14, 6, -4, 10, 10)
+
+[node name="SeedBag" type="Area2D" parent="." unique_id=1649159410]
+position = Vector2(1949, 228)
+
+[node name="Visual" type="Polygon2D" parent="SeedBag" unique_id=314331378]
+color = Color(0.760784, 0.658824, 0.419608, 1)
+polygon = PackedVector2Array(-22, 18, -28, -8, -12, -26, 12, -26, 28, -8, 22, 18)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SeedBag" unique_id=2118395025]
+shape = SubResource("RectangleShape2D_seedbag")
+
+[node name="SellBox" type="Area2D" parent="." unique_id=2024675008]
+position = Vector2(256, 456)
+
+[node name="Visual" type="Polygon2D" parent="SellBox" unique_id=1344878432]
+color = Color(0.501961, 0.329412, 0.180392, 1)
+polygon = PackedVector2Array(-24, -18, 24, -18, 24, 18, -24, 18)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SellBox" unique_id=2108286877]
+shape = SubResource("RectangleShape2D_sellbox")
+
+[node name="Vendor" parent="." unique_id=2049992215 instance=ExtResource("5_vendor")]
+position = Vector2(1760, 246)
+
+[node name="TransitionLayer" type="CanvasLayer" parent="." unique_id=1851320967]
+layer = 10
+
+[node name="NightRect" type="ColorRect" parent="TransitionLayer" unique_id=1628232771]
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+color = Color(0.054902, 0.0862745, 0.180392, 0)
+
+[node name="PromptPanel" type="Panel" parent="TransitionLayer" unique_id=1858712633]
+visible = false
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 420.0
+offset_bottom = 78.0
+
+[node name="PromptLabel" type="Label" parent="TransitionLayer/PromptPanel" unique_id=1391973384]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 10.0
+offset_right = 372.0
+offset_bottom = 42.0
+theme_override_font_sizes/font_size = 18
+
+[node name="StaminaPanel" type="Panel" parent="TransitionLayer" unique_id=2055572797]
+offset_left = 22.0
+offset_top = 18.0
+offset_right = 214.0
+offset_bottom = 60.0
+
+[node name="StaminaBackdrop" type="ColorRect" parent="TransitionLayer/StaminaPanel" unique_id=1808158486]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 9.0
+offset_right = 166.0
+offset_bottom = 31.0
+color = Color(0.12549, 0.219608, 0.305882, 1)
+
+[node name="StaminaFill" type="ColorRect" parent="TransitionLayer/StaminaPanel" unique_id=1218644958]
+visible = false
+layout_mode = 0
+offset_left = 13.0
+offset_top = 12.0
+offset_right = 163.0
+offset_bottom = 28.0
+color = Color(0.537255, 0.886275, 0.988235, 1)
+
+[node name="StaminaSegments" type="Node2D" parent="TransitionLayer/StaminaPanel" unique_id=1487573180]
+position = Vector2(13, 12)
+
+[node name="StaminaStatus" type="Label" parent="TransitionLayer/StaminaPanel" unique_id=1870023950]
+layout_mode = 0
+offset_left = 172.0
+offset_top = 8.0
+offset_right = 226.0
+offset_bottom = 30.0
+theme_override_font_sizes/font_size = 12
+text = "STA"
+
+[node name="DayLabel" type="Label" parent="TransitionLayer" unique_id=492742577]
+offset_left = 1024.0
+offset_top = 20.0
+offset_right = 1240.0
+offset_bottom = 48.0
+theme_override_font_sizes/font_size = 22
+text = "Dia 1"
+horizontal_alignment = 2
+
+[node name="PhaseLabel" type="Label" parent="TransitionLayer" unique_id=475582018]
+offset_left = 980.0
+offset_top = 52.0
+offset_right = 1240.0
+offset_bottom = 78.0
+theme_override_font_sizes/font_size = 18
+text = "Dia"
+horizontal_alignment = 2
+
+[node name="InventoryLabel" type="Label" parent="TransitionLayer" unique_id=276487830]
+offset_left = 24.0
+offset_top = 88.0
+offset_right = 420.0
+offset_bottom = 136.0
+theme_override_font_sizes/font_size = 18
+
+[node name="CoinsLabel" type="Label" parent="TransitionLayer" unique_id=1547503136]
+offset_left = 24.0
+offset_top = 140.0
+offset_right = 260.0
+offset_bottom = 172.0
+theme_override_font_sizes/font_size = 20
+text = "Moedas: 0"
+
+[node name="AlertLabel" type="Label" parent="TransitionLayer" unique_id=1187869556]
+visible = false
+offset_left = 360.0
+offset_top = 18.0
+offset_right = 920.0
+offset_bottom = 52.0
+theme_override_font_sizes/font_size = 20
+horizontal_alignment = 1
+
+[node name="HotbarPanel" type="Panel" parent="TransitionLayer" unique_id=1368518782]
+offset_left = 754.0
+offset_top = 644.0
+offset_right = 1270.0
+offset_bottom = 708.0
+
+[node name="Slot1" type="Panel" parent="TransitionLayer/HotbarPanel" unique_id=347867169]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 8.0
+offset_right = 104.0
+offset_bottom = 56.0
+
+[node name="Icon" type="Label" parent="TransitionLayer/HotbarPanel/Slot1" unique_id=659907356]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 58.0
+offset_bottom = 34.0
+theme_override_font_sizes/font_size = 18
+text = "B"
+
+[node name="Count" type="Label" parent="TransitionLayer/HotbarPanel/Slot1" unique_id=2004093472]
+layout_mode = 0
+offset_left = 54.0
+offset_top = 24.0
+offset_right = 84.0
+offset_bottom = 42.0
+theme_override_font_sizes/font_size = 14
+text = "5"
+horizontal_alignment = 2
+
+[node name="Slot2" type="Panel" parent="TransitionLayer/HotbarPanel" unique_id=2062861354]
+layout_mode = 0
+offset_left = 112.0
+offset_top = 8.0
+offset_right = 204.0
+offset_bottom = 56.0
+
+[node name="Icon" type="Label" parent="TransitionLayer/HotbarPanel/Slot2" unique_id=1659653700]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 58.0
+offset_bottom = 34.0
+theme_override_font_sizes/font_size = 18
+text = "A"
+
+[node name="Count" type="Label" parent="TransitionLayer/HotbarPanel/Slot2" unique_id=708397840]
+layout_mode = 0
+offset_left = 54.0
+offset_top = 24.0
+offset_right = 84.0
+offset_bottom = 42.0
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 2
+
+[node name="Slot3" type="Panel" parent="TransitionLayer/HotbarPanel" unique_id=1174176435]
+layout_mode = 0
+offset_left = 212.0
+offset_top = 8.0
+offset_right = 304.0
+offset_bottom = 56.0
+
+[node name="Icon" type="Label" parent="TransitionLayer/HotbarPanel/Slot3" unique_id=99343354]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 58.0
+offset_bottom = 34.0
+theme_override_font_sizes/font_size = 18
+text = "S"
+
+[node name="Count" type="Label" parent="TransitionLayer/HotbarPanel/Slot3" unique_id=139960571]
+layout_mode = 0
+offset_left = 54.0
+offset_top = 24.0
+offset_right = 84.0
+offset_bottom = 42.0
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 2
+
+[node name="Slot4" type="Panel" parent="TransitionLayer/HotbarPanel" unique_id=1865893556]
+layout_mode = 0
+offset_left = 312.0
+offset_top = 8.0
+offset_right = 404.0
+offset_bottom = 56.0
+
+[node name="Icon" type="Label" parent="TransitionLayer/HotbarPanel/Slot4" unique_id=227059825]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 58.0
+offset_bottom = 34.0
+theme_override_font_sizes/font_size = 18
+text = "-"
+
+[node name="Count" type="Label" parent="TransitionLayer/HotbarPanel/Slot4" unique_id=49946149]
+layout_mode = 0
+offset_left = 54.0
+offset_top = 24.0
+offset_right = 84.0
+offset_bottom = 42.0
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 2
+
+[node name="Slot5" type="Panel" parent="TransitionLayer/HotbarPanel" unique_id=1052882894]
+layout_mode = 0
+offset_left = 412.0
+offset_top = 8.0
+offset_right = 504.0
+offset_bottom = 56.0
+
+[node name="Icon" type="Label" parent="TransitionLayer/HotbarPanel/Slot5" unique_id=361584032]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 58.0
+offset_bottom = 34.0
+theme_override_font_sizes/font_size = 18
+text = "-"
+
+[node name="Count" type="Label" parent="TransitionLayer/HotbarPanel/Slot5" unique_id=1796500624]
+layout_mode = 0
+offset_left = 54.0
+offset_top = 24.0
+offset_right = 84.0
+offset_bottom = 42.0
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 2
+
+[node name="FadeRect" type="ColorRect" parent="TransitionLayer" unique_id=422369255]
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="HostileAudio" type="AudioStreamPlayer" parent="." unique_id=1744754791]
+stream = ExtResource("3_fdr2u")

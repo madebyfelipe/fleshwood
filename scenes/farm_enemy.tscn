@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://bb6c2ybq0l0gw"]
+
+[ext_resource type="Script" path="res://scripts/farm_enemy.gd" id="1_3q0tm"]
+[ext_resource type="Resource" uid="uid://drj4h7bjv6hl" path="res://assets/spriteframes/enemy_werewolf.tres" id="2_werewolf"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_enemy"]
+radius = 14.0
+
+[node name="FarmEnemy" type="Area2D"]
+z_index = 18
+script = ExtResource("1_3q0tm")
+
+[node name="Body" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("2_werewolf")
+animation = &"idle"
+frame = 0
+offset = Vector2(0, 0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_enemy")

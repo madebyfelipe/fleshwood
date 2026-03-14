@@ -1,0 +1,39 @@
+[gd_scene format=3 uid="uid://b3jjt6ihyn81r"]
+
+[ext_resource type="Script" uid="uid://c76u3w1rgeqgi" path="res://scripts/player.gd" id="1_2f3dx"]
+[ext_resource type="Texture2D" uid="uid://bndjswgfb7r" path="res://assets/Characters/Top-Down-16-bit-fantasy/Characters pack 1/Blond_kid/aseprite.png" id="2_fptkc"]
+[ext_resource type="Resource" uid="uid://c5hmokpd9f6j" path="res://assets/spriteframes/player_blond_kid.tres" id="3_8jl7n"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_0j0cc"]
+size = Vector2(18, 20)
+
+[node name="Player" type="CharacterBody2D" unique_id=172705995]
+z_index = 20
+script = ExtResource("1_2f3dx")
+
+[node name="Body" type="AnimatedSprite2D" parent="." unique_id=191356568]
+sprite_frames = ExtResource("3_8jl7n")
+animation = &"idle"
+frame = 0
+offset = Vector2(0, 0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=119251008]
+shape = SubResource("RectangleShape2D_0j0cc")
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=786588996]
+zoom = Vector2(2, 2)
+position_smoothing_enabled = false
+position_smoothing_speed = 14.0
+
+[node name="HeldItemVisual" type="Polygon2D" parent="."]
+position = Vector2(12, -2)
+color = Color(0.478431, 0.635294, 0.780392, 1)
+polygon = PackedVector2Array(-4, -8, 4, -8, 4, 8, -4, 8)
+
+[node name="HeldItemLabel" type="Label" parent="."]
+offset_left = 18.0
+offset_top = -8.0
+offset_right = 84.0
+offset_bottom = 14.0
+theme_override_font_sizes/font_size = 10
+text = "BAL"

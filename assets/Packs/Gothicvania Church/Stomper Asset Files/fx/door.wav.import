@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://bewuwalna7ey0"
+path="res://.godot/imported/door.wav-8b2a01c1215ad2527e5793ef072146f8.sample"
+
+[deps]
+
+source_file="res://assets/Packs/Gothicvania Church/Stomper Asset Files/fx/door.wav"
+dest_files=["res://.godot/imported/door.wav-8b2a01c1215ad2527e5793ef072146f8.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

@@ -1,0 +1,262 @@
+[gd_scene format=3 uid="uid://xb05xi04rmnq"]
+
+[ext_resource type="Script" uid="uid://cfjjodp43s6k3" path="res://scripts/world.gd" id="1_4l7cb"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_n3q1y"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_world_h"]
+size = Vector2(1280, 32)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_world_v"]
+size = Vector2(32, 896)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_house_top"]
+size = Vector2(320, 224)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_house_bottom"]
+size = Vector2(128, 32)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_inner_top"]
+size = Vector2(320, 32)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_inner_side"]
+size = Vector2(32, 192)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_door"]
+size = Vector2(64, 32)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_well"]
+radius = 34.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_seedbag"]
+size = Vector2(60, 60)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sellbox"]
+size = Vector2(64, 56)
+
+[node name="World" type="Node2D" unique_id=1963907544]
+script = ExtResource("1_4l7cb")
+
+[node name="TileMap" type="TileMap" parent="." unique_id=1652934505]
+format = 2
+
+[node name="WorldVisuals" type="Node2D" parent="." unique_id=1140902787]
+
+[node name="Ground" type="Polygon2D" parent="WorldVisuals" unique_id=229805043]
+color = Color(0.32549, 0.501961, 0.337255, 1)
+polygon = PackedVector2Array(0, 0, 1280, 0, 1280, 896, 0, 896)
+
+[node name="HouseExterior" type="Polygon2D" parent="WorldVisuals" unique_id=346678297]
+position = Vector2(384, 288)
+color = Color(0.47451, 0.180392, 0.254902, 1)
+polygon = PackedVector2Array(-160, -128, 160, -128, 160, 128, -160, 128)
+
+[node name="HouseExteriorDoor" type="Polygon2D" parent="WorldVisuals" unique_id=784485360]
+position = Vector2(384, 400)
+color = Color(0.372549, 0.243137, 0.176471, 1)
+polygon = PackedVector2Array(-32, -16, 32, -16, 32, 16, -32, 16)
+
+[node name="FarmPath" type="Polygon2D" parent="WorldVisuals" unique_id=1354692025]
+position = Vector2(530, 575)
+color = Color(0.556863, 0.447059, 0.294118, 1)
+polygon = PackedVector2Array(-210, -44, 210, -44, 210, -0.7074585, 210, 44, -210, 44)
+
+[node name="InteriorVoid" type="Polygon2D" parent="WorldVisuals" unique_id=1660100464]
+position = Vector2(1856, 288)
+color = Color(0.109804, 0.109804, 0.141176, 1)
+polygon = PackedVector2Array(-196, -164, 196, -164, 196, 164, -196, 164)
+
+[node name="HouseInterior" type="Polygon2D" parent="WorldVisuals" unique_id=2112008696]
+position = Vector2(1856, 288)
+color = Color(0.721569, 0.635294, 0.478431, 1)
+polygon = PackedVector2Array(-160, -128, 160, -128, 160, 128, -160, 128)
+
+[node name="HouseInteriorDoor" type="Polygon2D" parent="WorldVisuals" unique_id=1034316624]
+position = Vector2(1856, 400)
+color = Color(0.372549, 0.243137, 0.176471, 1)
+polygon = PackedVector2Array(-32, -16, 32, -16, 32, 16, -32, 16)
+
+[node name="Colliders" type="Node2D" parent="." unique_id=837642428]
+
+[node name="WorldTop" type="StaticBody2D" parent="Colliders" unique_id=885010572]
+position = Vector2(640, -16)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/WorldTop" unique_id=1477545995]
+shape = SubResource("RectangleShape2D_world_h")
+
+[node name="WorldBottom" type="StaticBody2D" parent="Colliders" unique_id=1539066207]
+position = Vector2(640, 912)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/WorldBottom" unique_id=92405874]
+shape = SubResource("RectangleShape2D_world_h")
+
+[node name="WorldLeft" type="StaticBody2D" parent="Colliders" unique_id=1158154507]
+position = Vector2(-16, 448)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/WorldLeft" unique_id=1121701371]
+shape = SubResource("RectangleShape2D_world_v")
+
+[node name="WorldRight" type="StaticBody2D" parent="Colliders" unique_id=1022616579]
+position = Vector2(1296, 448)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/WorldRight" unique_id=497457132]
+shape = SubResource("RectangleShape2D_world_v")
+
+[node name="ExteriorHouseTop" type="StaticBody2D" parent="Colliders" unique_id=329594483]
+position = Vector2(384, 272)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/ExteriorHouseTop" unique_id=216523720]
+shape = SubResource("RectangleShape2D_house_top")
+
+[node name="ExteriorHouseBottomLeft" type="StaticBody2D" parent="Colliders" unique_id=877697469]
+position = Vector2(288, 400)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/ExteriorHouseBottomLeft" unique_id=351965376]
+shape = SubResource("RectangleShape2D_house_bottom")
+
+[node name="ExteriorHouseBottomRight" type="StaticBody2D" parent="Colliders" unique_id=1155580809]
+position = Vector2(480, 400)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/ExteriorHouseBottomRight" unique_id=709265606]
+shape = SubResource("RectangleShape2D_house_bottom")
+
+[node name="InteriorHouseTop" type="StaticBody2D" parent="Colliders" unique_id=330357595]
+position = Vector2(1856, 160)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/InteriorHouseTop" unique_id=2073561919]
+shape = SubResource("RectangleShape2D_inner_top")
+
+[node name="InteriorHouseLeft" type="StaticBody2D" parent="Colliders" unique_id=1731774088]
+position = Vector2(1712, 288)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/InteriorHouseLeft" unique_id=978815888]
+shape = SubResource("RectangleShape2D_inner_side")
+
+[node name="InteriorHouseRight" type="StaticBody2D" parent="Colliders" unique_id=197638336]
+position = Vector2(2000, 288)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/InteriorHouseRight" unique_id=568469492]
+shape = SubResource("RectangleShape2D_inner_side")
+
+[node name="InteriorHouseBottomLeft" type="StaticBody2D" parent="Colliders" unique_id=1669117282]
+position = Vector2(1760, 400)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/InteriorHouseBottomLeft" unique_id=1116373077]
+shape = SubResource("RectangleShape2D_house_bottom")
+
+[node name="InteriorHouseBottomRight" type="StaticBody2D" parent="Colliders" unique_id=1992942347]
+position = Vector2(1952, 400)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Colliders/InteriorHouseBottomRight" unique_id=1843945728]
+shape = SubResource("RectangleShape2D_house_bottom")
+
+[node name="Markers" type="Node2D" parent="." unique_id=962538654]
+
+[node name="OutsideSpawn" type="Marker2D" parent="Markers" unique_id=2021064131]
+position = Vector2(416, 528)
+
+[node name="InsideSpawn" type="Marker2D" parent="Markers" unique_id=1512569303]
+position = Vector2(1856, 336)
+
+[node name="OutsideDoor" type="Area2D" parent="." unique_id=427238742]
+position = Vector2(384, 432)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="OutsideDoor" unique_id=1385321471]
+shape = SubResource("RectangleShape2D_door")
+
+[node name="InsideDoor" type="Area2D" parent="." unique_id=1057470766]
+position = Vector2(1856, 432)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InsideDoor" unique_id=1835238881]
+shape = SubResource("RectangleShape2D_door")
+
+[node name="Player" parent="." unique_id=1014247065 instance=ExtResource("2_n3q1y")]
+
+[node name="Well" type="Area2D" parent="." unique_id=2106015635]
+position = Vector2(608, 704)
+
+[node name="Visual" type="Polygon2D" parent="Well" unique_id=1359455766]
+color = Color(0.301961, 0.368627, 0.478431, 1)
+polygon = PackedVector2Array(-24, -12, -16, -32, 16, -32, 24, -12, 24, 18, -24, 18)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Well" unique_id=522514272]
+shape = SubResource("CircleShape2D_well")
+
+[node name="CropField" type="Node2D" parent="." unique_id=1367785024]
+position = Vector2(704, 608)
+
+[node name="Plots" type="Node2D" parent="CropField" unique_id=1546746771]
+
+[node name="SeedBag" type="Area2D" parent="." unique_id=1649159410]
+position = Vector2(1856, 300)
+
+[node name="Visual" type="Polygon2D" parent="SeedBag" unique_id=314331378]
+color = Color(0.760784, 0.658824, 0.419608, 1)
+polygon = PackedVector2Array(-22, 18, -28, -8, -12, -26, 12, -26, 28, -8, 22, 18)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SeedBag" unique_id=2118395025]
+shape = SubResource("RectangleShape2D_seedbag")
+
+[node name="SellBox" type="Area2D" parent="." unique_id=2024675008]
+position = Vector2(256, 456)
+
+[node name="Visual" type="Polygon2D" parent="SellBox" unique_id=1344878432]
+color = Color(0.501961, 0.329412, 0.180392, 1)
+polygon = PackedVector2Array(-24, -18, 24, -18, 24, 18, -24, 18)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SellBox" unique_id=2108286877]
+shape = SubResource("RectangleShape2D_sellbox")
+
+[node name="TransitionLayer" type="CanvasLayer" parent="." unique_id=1851320967]
+layer = 10
+
+[node name="NightRect" type="ColorRect" parent="TransitionLayer" unique_id=1628232771]
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+color = Color(0.054902, 0.0862745, 0.180392, 0)
+
+[node name="PromptPanel" type="Panel" parent="TransitionLayer" unique_id=1858712633]
+visible = false
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 420.0
+offset_bottom = 78.0
+
+[node name="PromptLabel" type="Label" parent="TransitionLayer/PromptPanel" unique_id=1391973384]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 10.0
+offset_right = 372.0
+offset_bottom = 42.0
+theme_override_font_sizes/font_size = 18
+
+[node name="DayLabel" type="Label" parent="TransitionLayer" unique_id=492742577]
+offset_left = 1024.0
+offset_top = 20.0
+offset_right = 1240.0
+offset_bottom = 48.0
+theme_override_font_sizes/font_size = 22
+text = "Dia 1"
+horizontal_alignment = 2
+
+[node name="PhaseLabel" type="Label" parent="TransitionLayer" unique_id=475582018]
+offset_left = 980.0
+offset_top = 52.0
+offset_right = 1240.0
+offset_bottom = 78.0
+theme_override_font_sizes/font_size = 18
+text = "Dia"
+horizontal_alignment = 2
+
+[node name="InventoryLabel" type="Label" parent="TransitionLayer" unique_id=276487830]
+offset_left = 24.0
+offset_top = 88.0
+offset_right = 420.0
+offset_bottom = 136.0
+theme_override_font_sizes/font_size = 18
+
+[node name="FadeRect" type="ColorRect" parent="TransitionLayer" unique_id=422369255]
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0)

@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://paig1k3sxnqd"
+path="res://.godot/imported/explosion.wav-e8beed72094c2952ea786633f4727976.sample"
+
+[deps]
+
+source_file="res://assets/Packs/Sewers pack files/Sounds/explosion.wav"
+dest_files=["res://.godot/imported/explosion.wav-e8beed72094c2952ea786633f4727976.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

@@ -1,0 +1,72 @@
+[gd_resource type="SpriteFrames" format=3 uid="uid://drj4h7bjv6hl"]
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("1_idle_1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("1_idle_2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("1_idle_3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("1_idle_4")
+}, {
+"duration": 1.0,
+"texture": ExtResource("1_idle_5")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("2_run_1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("2_run_2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("2_run_3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("2_run_4")
+}, {
+"duration": 1.0,
+"texture": ExtResource("2_run_5")
+}, {
+"duration": 1.0,
+"texture": ExtResource("2_run_6")
+}],
+"loop": true,
+"name": &"run",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("3_fall_1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("3_fall_2")
+}],
+"loop": false,
+"name": &"fall",
+"speed": 5.0
+}]
+
+[ext_resource type="Texture2D" uid="uid://c5xvjg6kj5x3" path="res://assets/Characters/WereWolf/Sprites/Idle/werewolf-idle1.png" id="1_idle_1"]
+[ext_resource type="Texture2D" uid="uid://c5xvjg6kj5x4" path="res://assets/Characters/WereWolf/Sprites/Idle/werewolf-idle2.png" id="1_idle_2"]
+[ext_resource type="Texture2D" uid="uid://c5xvjg6kj5x5" path="res://assets/Characters/WereWolf/Sprites/Idle/werewolf-idle3.png" id="1_idle_3"]
+[ext_resource type="Texture2D" uid="uid://c5xvjg6kj5x6" path="res://assets/Characters/WereWolf/Sprites/Idle/werewolf-idle4.png" id="1_idle_4"]
+[ext_resource type="Texture2D" uid="uid://c5xvjg6kj5x7" path="res://assets/Characters/WereWolf/Sprites/Idle/werewolf-idle5.png" id="1_idle_5"]
+[ext_resource type="Texture2D" uid="uid://c5xvjg6kj5x8" path="res://assets/Characters/WereWolf/Sprites/run/werewolf-run1.png" id="2_run_1"]
+[ext_resource type="Texture2D" uid="uid://c5xvjg6kj5x9" path="res://assets/Characters/WereWolf/Sprites/run/werewolf-run2.png" id="2_run_2"]
+[ext_resource type="Texture2D" uid="uid://c5xvjg6kj5xa" path="res://assets/Characters/WereWolf/Sprites/run/werewolf-run3.png" id="2_run_3"]
+[ext_resource type="Texture2D" uid="uid://c5xvjg6kj5xb" path="res://assets/Characters/WereWolf/Sprites/run/werewolf-run4.png" id="2_run_4"]
+[ext_resource type="Texture2D" uid="uid://c5xvjg6kj5xc" path="res://assets/Characters/WereWolf/Sprites/run/werewolf-run5.png" id="2_run_5"]
+[ext_resource type="Texture2D" uid="uid://c5xvjg6kj5xd" path="res://assets/Characters/WereWolf/Sprites/run/werewolf-run6.png" id="2_run_6"]
+[ext_resource type="Texture2D" uid="uid://c5xvjg6kj5xe" path="res://assets/Characters/WereWolf/Sprites/fall/werewolf-fall1.png" id="3_fall_1"]
+[ext_resource type="Texture2D" uid="uid://c5xvjg6kj5xf" path="res://assets/Characters/WereWolf/Sprites/fall/werewolf-fall2.png" id="3_fall_2"]

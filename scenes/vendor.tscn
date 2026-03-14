@@ -1,0 +1,18 @@
+[gd_scene format=3]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_vendor"]
+size = Vector2(56, 72)
+
+[node name="Vendor" type="Area2D"]
+
+[node name="Visual" type="Polygon2D" parent="."]
+color = Color(0.596078, 0.360784, 0.207843, 1)
+polygon = PackedVector2Array(-20, 30, -26, -10, -10, -34, 10, -34, 26, -10, 20, 30)
+
+[node name="Apron" type="Polygon2D" parent="."]
+position = Vector2(0, 10)
+color = Color(0.827451, 0.772549, 0.545098, 1)
+polygon = PackedVector2Array(-14, -8, 14, -8, 18, 20, -18, 20)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_vendor")

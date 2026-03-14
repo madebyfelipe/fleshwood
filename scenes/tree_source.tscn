@@ -1,0 +1,31 @@
+[gd_scene format=3]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_tree_body"]
+radius = 18.0
+height = 48.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_tree_interact"]
+radius = 34.0
+
+[node name="TreeSource" type="Node2D"]
+
+[node name="Visual" type="Polygon2D" parent="."]
+color = Color(0.231373, 0.458824, 0.227451, 1)
+polygon = PackedVector2Array(-30, 8, -40, -12, -24, -34, 0, -46, 24, -34, 40, -12, 30, 8)
+
+[node name="Trunk" type="Polygon2D" parent="."]
+position = Vector2(0, 20)
+color = Color(0.447059, 0.286275, 0.152941, 1)
+polygon = PackedVector2Array(-8, -12, 8, -12, 10, 18, -10, 18)
+
+[node name="Body" type="StaticBody2D" parent="."]
+position = Vector2(0, 18)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Body"]
+shape = SubResource("CapsuleShape2D_tree_body")
+
+[node name="InteractArea" type="Area2D" parent="."]
+position = Vector2(0, 6)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractArea"]
+shape = SubResource("CircleShape2D_tree_interact")
