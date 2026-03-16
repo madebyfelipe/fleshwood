@@ -1,6 +1,4 @@
 res://scenes/world.tscn
 res://assets/Environments/forest_tileset.tres
-res://assets/player_animation.tres
 res://scripts/world.gd
 res://scenes/player.tscn
-res://scripts/inventory_ui.gd

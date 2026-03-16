@@ -1,5 +1,5 @@
 63f7b34db8d8cdea90c76aacccf841ec
-::res://::1773514646
+::res://::1773621866
 CLAUDE.md::TextFile::-1::1773478094::0::1::::<><><>0<>0<><>::
 FIX_SPRITES.md::TextFile::-1::1773454513::0::1::::<><><>0<>0<><>::
 node_2d.tscn::PackedScene::2342196187790996278::1773454277::0::1::::<><><>0<>0<><>::
@@ -322,7 +322,7 @@ skip.png::CompressedTexture2D::6524903879624178134::1773454513::1773454513::1:::
 slide.png::CompressedTexture2D::2472606547869108432::1773454513::1773454513::1::::<><><>0<>0<>a28cc77fdf4351d2ea1ec4235a3b6c21<>res://.godot/imported/slide.png-c8a6a3f51949aa4dbb6b89ce5b6fbc6f.ctex::
 snap.png::CompressedTexture2D::3640002644484927807::1773454513::1773454513::1::::<><><>0<>0<>4cc7d9d12494c80069676dabf6259aea<>res://.godot/imported/snap.png-548dc0e4ea632166fd7e0e026eda65fe.ctex::
 ::res://assets/Characters/darkwatcher/::1773519510
-::res://assets/Characters/darkwatcher/rotations/::1773519510
+::res://assets/Characters/darkwatcher/rotations/::1773519688
 east.png::CompressedTexture2D::4228740102625126290::1773530270::1773519688::1::::<><><>0<>0<>936d1b0a52040517bbf777b37f6f05fb<>res://.godot/imported/east.png-62afac746d193ce162e50896dbc1ea16.ctex::
 north-east.png::CompressedTexture2D::976748229434904465::1773530270::1773519688::1::::<><><>0<>0<>1fb63d57bf215b93dbfa9055cbdd5833<>res://.godot/imported/north-east.png-2bb207040b203368e2962e7d94ad8702.ctex::
 north-west.png::CompressedTexture2D::4716379682545632544::1773530270::1773519688::1::::<><><>0<>0<>1b4091d04077f6d896858915d5d206e8<>res://.godot/imported/north-west.png-e54dfd5b89d1d2b586d6fd9a97b47f3e.ctex::
@@ -836,7 +836,7 @@ ogre-idle.png::CompressedTexture2D::2980688914762493702::1773454513::1773454513:
 ogre-walk-unarmed.png::CompressedTexture2D::6400323308093151393::1773454513::1773454513::1::::<><><>0<>0<>0246f66156ceac8d7b65609d64a3484d<>res://.godot/imported/ogre-walk-unarmed.png-4abc837615c734eef690c894ff598e18.ctex::
 ogre-walk.png::CompressedTexture2D::2523784877681827543::1773454513::1773454513::1::::<><><>0<>0<>10b592af1916cf275ca87ec6195a12c8<>res://.godot/imported/ogre-walk.png-cf8b739627def6ad136078262c3b51d0.ctex::
 ::res://assets/Characters/old man consequences/::1773519527
-::res://assets/Characters/old man consequences/rotations/::1773519527
+::res://assets/Characters/old man consequences/rotations/::1773519688
 east.png::CompressedTexture2D::2683449275434327787::1773529756::1773519688::1::::<><><>0<>0<>fd88820514adf147ff15f0b40487e506<>res://.godot/imported/east.png-db5279b01d1a3dc2d04561a51239d123.ctex::
 north.png::CompressedTexture2D::2005833394211531335::1773529756::1773519688::1::::<><><>0<>0<>9e918db17fa96e7c47ab575ce7ba1fc4<>res://.godot/imported/north.png-e8c25530700e716660fd812ea5647ec1.ctex::
 south.png::CompressedTexture2D::3220576722931599825::1773529756::1773519688::1::::<><><>0<>0<>0ee732db92da33f7bb98bb53746ea012<>res://.godot/imported/south.png-2b9935fafe94014089ca264acebd3c54.ctex::
@@ -1390,8 +1390,8 @@ wolf-runing-cycle-skin4.png::CompressedTexture2D::2310127780981646669::177345451
 ::res://assets/Characters/wolf-runing-cycle/spritesheets/::1773454514
 wolf-runing-cycle-skin.png::CompressedTexture2D::659811499525024860::1773454514::1773454283::1::::<><><>0<>0<>b47a807555105f54e43529c5fe2d4762<>res://.godot/imported/wolf-runing-cycle-skin.png-20a5def58d64305cb8555b6736546666.ctex::
 wolf-runing-cycle.png::CompressedTexture2D::6348680923173865556::1773454514::1773454283::1::::<><><>0<>0<>d26e0a4fbdf4dc113ce5e253a6849e8b<>res://.godot/imported/wolf-runing-cycle.png-6b66c512cb2ab7c5043419b6f878458c.ctex::
-::res://assets/Environments/::1773513826
-forest_tileset.tres::TileSet::4759967444739166345::1773513826::0::1::::<><><>0<>0<><>::uid://ccvdfkilkk4wc::::res://assets/Environments/Top-Down-Forest/PNG/top-down-forest-tileset.png<>uid://s0xrmgrv17rc::::res://assets/Environments/Top-Down-Town/PNG/top-down-town-tileset.png
+::res://assets/Environments/::1773523019
+forest_tileset.tres::TileSet::4759967444739166345::1773523019::0::1::::<><><>0<>0<><>::uid://ccvdfkilkk4wc::::res://assets/Environments/Top-Down-Forest/PNG/top-down-forest-tileset.png<>uid://s0xrmgrv17rc::::res://assets/Environments/Top-Down-Town/PNG/top-down-town-tileset.png
 ::res://assets/Environments/alien-environment/::1773454514
 ::res://assets/Environments/alien-environment/PNG/::1773454514
 preview-alien-environment.png::CompressedTexture2D::1724480953782402826::1773454514::1773454514::1::::<><><>0<>0<>9296a4e88949666dad13e2a40cca71fb<>res://.godot/imported/preview-alien-environment.png-138d76a35c8adbb3bde954b2e5d30144.ctex::
@@ -5170,16 +5170,18 @@ Crickets.mp3::AudioStreamMP3::7906242638783183780::1773454517::1773454517::1::::
 ::res://assets/spriteframes/::1773454517
 enemy_werewolf.tres::SpriteFrames::246259610846769741::1773454517::0::1::::<><><>0<>0<><>::
 player_blond_kid.tres::SpriteFrames::202756219835911771::1773454517::0::1::::<><><>0<>0<><>::
-::res://scenes/::1773519651
+::res://scenes/::1773621245
 farm_enemy.tscn::PackedScene::2520776150993996142::1773455251::0::1::::<><><>0<>0<><>::res://scripts/farm_enemy.gd
-player.tscn::PackedScene::4370869729296596817::1773518584::0::1::::<><><>0<>0<><>::uid://c76u3w1rgeqgi::::res://scripts/player.gd<>uid://cxf3pq2m7jvam::::res://assets/player_animation.tres
+player.tscn::PackedScene::4370869729296596817::1773522964::0::1::::<><><>0<>0<><>::uid://c76u3w1rgeqgi::::res://scripts/player.gd<>uid://cxf3pq2m7jvam::::res://assets/player_animation.tres
 tree_source.tscn::PackedScene::8237610152128554199::1773509604::0::1::::<><><>0<>0<><>::uid://ccvdfkilkk4wc::::res://assets/Environments/Top-Down-Forest/PNG/top-down-forest-tileset.png
-vendor.tscn::PackedScene::-1::1773519651::0::1::::<><><>0<>0<><>::
-world.tscn::PackedScene::1617980501635923570::1773519355::0::1::::<><><>0<>0<><>::uid://cfjjodp43s6k3::::res://scripts/world.gd<>uid://b3jjt6ihyn81r::::res://scenes/player.tscn<>uid://dkv3wqju4p8xk::::res://assets/sfx/Crickets.mp3<>uid://dpmmiao84f1ct::::res://scenes/tree_source.tscn<>res://scenes/vendor.tscn<>uid://b82076paiqu46::::res://assets/Environments/forest_tileset.tres
-::res://scripts/::1773519663
+vendor.tscn::PackedScene::-1::1773519796::0::1::::<><><>0<>0<><>::
+world.tscn::PackedScene::1617980501635923570::1773543653::0::1::::<><><>0<>0<><>::uid://cfjjodp43s6k3::::res://scripts/world.gd<>uid://b3jjt6ihyn81r::::res://scenes/player.tscn<>uid://dkv3wqju4p8xk::::res://assets/sfx/Crickets.mp3<>uid://dpmmiao84f1ct::::res://scenes/tree_source.tscn<>res://scenes/vendor.tscn<>uid://b82076paiqu46::::res://assets/Environments/forest_tileset.tres
+::res://scripts/::1773523270
 asset_manager.gd::GDScript::1810839176218190421::1773454517::0::1::::<>Node<><>0<>0<><>::
 farm_enemy.gd::GDScript::8928028934873564891::1773455274::0::1::::FarmEnemy<>Area2D<><>0<>0<><>::
+inventory_data.gd::GDScript::1164955748136058509::1773521642::0::1::::InventoryData<>RefCounted<><>0<>0<><>::
+inventory_ui.gd::GDScript::4044184177945967025::1773523246::0::1::::InventoryUI<>CanvasLayer<><>0<>0<><>::
 player.gd::GDScript::7084145612722971956::1773508212::0::1::::PlayerController<>CharacterBody2D<><>0<>0<><>::
 sprite_generator.gd::GDScript::3514506054817021745::1773454517::0::1::::<>Node<><>0<>0<><>::
 stamina_ring.gd::GDScript::3730884384052446953::1773440998::0::1::::StaminaRing<>Node2D<><>0<>0<><>::
-world.gd::GDScript::5142936621510373788::1773519663::0::1::::<>Node2D<><>0<>0<><>::
+world.gd::GDScript::5142936621510373788::1773523270::0::1::::<>Node2D<><>0<>0<><>::

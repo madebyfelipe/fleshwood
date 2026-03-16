@@ -5,7 +5,8 @@
       "Bash(powershell -Command \"Add-Type -AssemblyName System.Drawing; $img = [System.Drawing.Image]::FromFile\\(''C:/Users/Made by Felipe/Documents/Fleshwoods/Assets/Environments/Top-Down-Town/PNG/top-down-town-tileset.png''\\); Write-Host $img.Width $img.Height; $img.Dispose\\(\\)\")",
       "Bash(powershell -File:*)",
       "Bash(python3 -c \":*)",
-      "Bash(python -c \":*)"
+      "Bash(python -c \":*)",
+      "Bash(grep -n \"class_name\\\\|extends\" \"C:\\\\Users\\\\Made by Felipe\\\\Documents\\\\Fleshwoods\\\\scripts\"/*.gd)"
     ]
   }
 }
