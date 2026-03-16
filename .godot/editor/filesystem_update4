@@ -4,3 +4,5 @@ res://scripts/world.gd
 res://scenes/player.tscn
 res://scripts/player.gd
 res://assets/player_animation.tres
+res://CLAUDE.md
+res://scripts/darkwatcher_shop_ui.gd

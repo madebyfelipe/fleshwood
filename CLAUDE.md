@@ -23,8 +23,7 @@ scenes/
   tree_source.tscn → Node2D com colisão e área de interação
   vendor.tscn      → Area2D do vendedor
 assets/sfx/
-  Crickets.mp3     → único asset de áudio (warning do Goatman)
-progress.md        → log de sessões e TODOs em português
+ROADMAP.md        → log de sessões e TODOs em português
 ```
 
 ---
@@ -182,6 +181,31 @@ Itens da hotbar (5 slots, teclas 1–5 ou scroll): `bucket`, `axe`, `seeds`, `cr
 
 Estágios do plot: `EMPTY → STAGE1_DRY → STAGE1_GROWING → STAGE2_DRY → STAGE2_GROWING → MATURE` (40s por estágio; precisa de água para sair de DRY).
 
+### Sistema de inventário
+
+`scripts/inventory_ui.gd` (CanvasLayer layer 10) + `scripts/inventory_data.gd`.
+
+**Slots unificados:** 0–14 = bag (InventoryData) | 15–19 = hotbar (_hotbar de world.gd, referência direta).
+
+Os dicionários têm formatos diferentes internamente:
+- Hotbar: `{"id", "label", "count"}`
+- Bag: `{"id", "name", "quantity"}`
+
+Os helpers `_slot_id/qty/name`, `_write_slot`, `_clear_slot` normalizam o acesso. `_move_unified` e `_split_unified` funcionam transparentemente entre qualquer par de slots.
+
+**API pública do InventoryUI:**
+```gdscript
+set_hotbar(hotbar: Array)                           # passar _hotbar de world.gd uma vez
+open(data: InventoryData, selected_hotbar: int)     # abre painel
+cancel_drag()                                       # cancela drag em andamento
+signal closed                                       # emitido ao fechar
+```
+
+**Funções de world.gd atualizadas** para verificar bag além da hotbar:
+- `_has_item(id)` → hotbar OR bag
+- `_get_item_count(id)` → hotbar + bag
+- `_remove_item(id, amt)` → hotbar primeiro, drena restante da bag
+
 ### Truque das duas salas
 
 Interior da casa em `x ≈ 1856` (fora da área visível). Transição usa fade + teleport + `snap_camera_for_room_transition()`. **Nunca mover** os nós de spawn interior para coordenadas próximas do exterior.
@@ -211,6 +235,7 @@ Cheat de debug: segurar `A + R + Q` pula a fase atual.
 - Hotbar 5 slots
 - Transição interior/exterior (fade + teleport)
 - 30 árvores com respawn (55s)
+- **Inventário** (E abre/fecha): grade 5×3 + hotbar integrada, drag-and-drop Minecraft-like entre todos os slots, descarte por arrastar para fora do painel, divisão de pilha com clique-dir
 
 ### Não implementado (próximos passos)
 - Darkwatchers (NPC tutorial)

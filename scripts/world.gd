@@ -1,6 +1,7 @@
 extends Node2D
 
 const FarmEnemyScene = preload("res://scenes/farm_enemy.tscn")
+const DarkwatcherShopUIScript = preload("res://scripts/darkwatcher_shop_ui.gd")
 
 var TEX_HOTBAR_SELECTED: Texture2D = null
 var TEX_HOTBAR_NOT_SELECTED: Texture2D = null
@@ -66,6 +67,7 @@ const ITEM_SEEDS := "seeds"
 const ITEM_CROP := "crop"
 const ITEM_WOOD := "wood"
 const ITEM_BREAD := "pao"
+const ITEM_LANTERN := "lanterna"
 
 const STOVE_COOK_DURATION := 30.0
 const STOVE_WHEAT_COST := 2
@@ -246,6 +248,7 @@ var _darkwatcher_body: Node2D = null
 var _darkwatcher_sprite: AnimatedSprite2D = null
 var _darkwatcher_area: Area2D = null
 var _darkwatcher_dialogue_index := 0
+var _lantern_bought := false
 
 # — Alerta do gerador (timer para limpar a mensagem)
 var _generator_alert_timer := 0.0
@@ -269,6 +272,7 @@ var _wendigo_cooldown_timer := 0.0
 var _inventory_data: InventoryData = null
 var _inventory_ui:   InventoryUI   = null
 var _item_icon_map:  Dictionary    = {}
+var _darkwatcher_shop_ui = null
 
 
 func _load_ui_textures() -> void:
@@ -336,6 +340,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _inventory_ui != null and _inventory_ui.visible:
 		return  # bloqueia ações de jogo enquanto inventário está aberto
 
+	if _darkwatcher_shop_ui != null and _darkwatcher_shop_ui.visible:
+		return  # bloqueia ações de jogo enquanto loja está aberta
+
 	if event.is_action_pressed("interact"):
 		_try_interact()
 	elif event.is_action_pressed("use_item"):
@@ -346,6 +353,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_selected_hotbar_index = wrapi(_selected_hotbar_index + 1, 0, HOTBAR_SIZE)
 	elif event is InputEventKey and event.pressed and not event.echo:
+		if event.physical_keycode == KEY_TAB:
+			_coins += 100
+			_skip_tutorial_npc()
+			return
 		if event.physical_keycode == KEY_O:
 			_trigger_hostile_warning_debug()
 			return
@@ -1897,11 +1908,12 @@ func _setup_hotbar() -> void:
 
 func _setup_inventory() -> void:
 	_item_icon_map = {
-		ITEM_BUCKET: TEX_ICON_BUCKET,
-		ITEM_AXE:    TEX_ICON_AXE,
-		ITEM_SEEDS:  TEX_ICON_SEEDS,
-		ITEM_CROP:   TEX_ICON_SEEDS,
-		ITEM_BREAD:  TEX_ICON_BREAD,
+		ITEM_BUCKET:  TEX_ICON_BUCKET,
+		ITEM_AXE:     TEX_ICON_AXE,
+		ITEM_SEEDS:   TEX_ICON_SEEDS,
+		ITEM_CROP:    TEX_ICON_SEEDS,
+		ITEM_BREAD:   TEX_ICON_BREAD,
+		ITEM_LANTERN: null,  # PLACEHOLDER — substituir quando asset disponível
 	}
 	_inventory_data = InventoryData.new()
 	_inventory_ui   = InventoryUI.new(_inventory_data, _item_icon_map)
@@ -1909,6 +1921,15 @@ func _setup_inventory() -> void:
 	# Passa referência direta ao _hotbar para edição em tempo real
 	_inventory_ui.set_hotbar(_hotbar)
 	_inventory_ui.closed.connect(_on_inventory_closed)
+
+	_darkwatcher_shop_ui = DarkwatcherShopUIScript.new(
+		func() -> int: return _coins,
+		_try_buy_from_darkwatcher,
+		func() -> bool: return _lantern_bought,
+		null  # PLACEHOLDER — passar Texture2D da lanterna quando disponível
+	)
+	add_child(_darkwatcher_shop_ui)
+	_darkwatcher_shop_ui.closed.connect(_on_darkwatcher_shop_closed)
 
 
 func _toggle_inventory() -> void:
@@ -1923,6 +1944,30 @@ func _toggle_inventory() -> void:
 
 func _on_inventory_closed() -> void:
 	player.set_movement_locked(false)
+
+
+func _open_darkwatcher_shop() -> void:
+	if _darkwatcher_shop_ui == null or _darkwatcher_shop_ui.visible:
+		return
+	if _inventory_ui != null and _inventory_ui.visible:
+		return
+	player.set_movement_locked(true)
+	_darkwatcher_shop_ui.open()
+
+
+func _on_darkwatcher_shop_closed() -> void:
+	player.set_movement_locked(false)
+
+
+func _try_buy_from_darkwatcher(item_id: String, price: int) -> bool:
+	if _lantern_bought:
+		return false
+	if _coins < price:
+		return false
+	_coins -= price
+	_add_item(item_id, "Lanterna", 1)
+	_lantern_bought = true
+	return true
 
 
 func _build_hotbar_visuals() -> void:
@@ -2308,6 +2353,27 @@ func _update_npc_dying(delta: float) -> void:
 		_hostile_trigger_timer = NIGHT_WARNING_DELAY
 
 
+## Pula toda a sequência do NPC tutorial (Tab de debug).
+## Ativa o gerador como ocorreria no fluxo normal e mata o NPC imediatamente.
+func _skip_tutorial_npc() -> void:
+	if _tutorial_phase == TutorialPhase.DEAD:
+		return
+	_close_tutorial_dialogue()
+	hostile_audio.stop()
+	# Garante que o gerador fica ligado (o NPC o ligaria na fase NIGHT_RUN_GENERATOR)
+	if not _generator_active:
+		_generator_fuel = GENERATOR_WOOD_PER_NIGHT * GENERATOR_FUEL_PER_WOOD
+		_generator_active = true
+		_refresh_generator_visuals()
+	_tutorial_phase = TutorialPhase.DEAD
+	_first_night_done = true
+	if is_instance_valid(_tutorial_npc_body):
+		_tutorial_npc_body.queue_free()
+		_tutorial_npc_body = null
+	_hostile_state = HostileEventState.IDLE
+	_hostile_trigger_timer = NIGHT_WARNING_DELAY
+
+
 func _begin_tutorial_dialogue() -> void:
 	_tutorial_phase = TutorialPhase.IN_DIALOGUE
 	_tutorial_dialogue_index = 0
@@ -2479,6 +2545,7 @@ func _advance_darkwatcher_dialogue() -> void:
 	if _darkwatcher_dialogue_index >= DARKWATCHER_LINES.size():
 		_darkwatcher_phase = DarkwatcherPhase.DONE
 		_close_tutorial_dialogue()
+		_open_darkwatcher_shop()
 		return
 	_show_npc_dialogue(DARKWATCHER_NAME, DARKWATCHER_LINES[_darkwatcher_dialogue_index])
 
@@ -2487,4 +2554,4 @@ func _interact_with_darkwatcher() -> void:
 	if _darkwatcher_phase == DarkwatcherPhase.IN_DIALOGUE:
 		_advance_darkwatcher_dialogue()
 	elif _darkwatcher_phase == DarkwatcherPhase.DONE:
-		_begin_darkwatcher_dialogue()
+		_open_darkwatcher_shop()

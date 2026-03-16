@@ -49,8 +49,44 @@ func _ready() -> void:
 	_ensure_input_actions()
 	_setup_footstep_audio()
 	_setup_axe_animation()
+	_setup_idle_animations()
+	_setup_run_animations()
 	animated_sprite.animation_finished.connect(_on_animation_finished)
 	animated_sprite.frame_changed.connect(_on_frame_changed)
+
+
+func _setup_idle_animations() -> void:
+	var frames := animated_sprite.sprite_frames
+	for dir in ["east", "north", "south", "west"]:
+		var anim := StringName("idle_" + dir)
+		if frames.has_animation(anim):
+			continue
+		frames.add_animation(anim)
+		frames.set_animation_speed(anim, 6.0)
+		frames.set_animation_loop(anim, true)
+		for i in range(4):
+			var path := "res://assets/Characters/Prota/animations/breathing-idle/%s/frame_%03d.png" % [dir, i]
+			frames.add_frame(anim, load(path) as Texture2D)
+
+
+func _setup_run_animations() -> void:
+	var frames := animated_sprite.sprite_frames
+	var dir_map: Dictionary = {
+		"east": "run_east", "north": "run_north",
+		"north-east": "run_north_east", "north-west": "run_north_west",
+		"south": "run_south", "south-east": "run_south_east",
+		"south-west": "run_south_west", "west": "run_west",
+	}
+	for folder: String in dir_map.keys():
+		var anim := StringName(dir_map[folder])
+		if frames.has_animation(anim):
+			continue
+		frames.add_animation(anim)
+		frames.set_animation_speed(anim, 10.0)
+		frames.set_animation_loop(anim, true)
+		for i in range(8):
+			var path := "res://assets/Characters/Prota/animations/running-8-frames/%s/frame_%03d.png" % [folder, i]
+			frames.add_frame(anim, load(path) as Texture2D)
 
 
 func _setup_axe_animation() -> void:
@@ -309,47 +345,54 @@ func _update_animation_state() -> void:
 	if _is_swinging:
 		return
 
-	var velocity_magnitude = velocity.length()
+	var speed_scale := 0.5 if movement_state == MovementState.EXHAUSTED else 1.0
+	animated_sprite.speed_scale = speed_scale
+	_animation_speed_multiplier = speed_scale
 
-	if velocity_magnitude > 1.0:
+	if velocity.length() > 1.0:
 		_update_sprite_direction()
-		animated_sprite.play()
 	else:
-		animated_sprite.pause()
-
-	# Adjust animation speed based on movement state
-	match movement_state:
-		MovementState.SPRINTING:
-			_animation_speed_multiplier = 1.5
-		MovementState.EXHAUSTED:
-			_animation_speed_multiplier = 0.5
-		_:
-			_animation_speed_multiplier = 1.0
-
-	animated_sprite.speed_scale = _animation_speed_multiplier
+		_update_idle_direction()
+	animated_sprite.play()
 
 
 func _update_sprite_direction() -> void:
 	var angle_deg := rad_to_deg(facing_direction.angle())
-	# Normaliza para [-180, 180]
+	var run := movement_state == MovementState.SPRINTING
+	animated_sprite.flip_h = false
 	# Godot angle(): DIREITA=0°, BAIXO=90°, ESQUERDA=±180°, CIMA=-90°
 	if angle_deg >= -22.5 and angle_deg < 22.5:
-		animated_sprite.animation = &"walk_east"
+		animated_sprite.animation = &"run_east" if run else &"walk_east"
 	elif angle_deg >= 22.5 and angle_deg < 67.5:
-		animated_sprite.animation = &"walk_south_east"
+		animated_sprite.animation = &"run_south_east" if run else &"walk_south_east"
 	elif angle_deg >= 67.5 and angle_deg < 112.5:
-		animated_sprite.animation = &"walk_south"
+		animated_sprite.animation = &"run_south" if run else &"walk_south"
 	elif angle_deg >= 112.5 and angle_deg < 157.5:
-		animated_sprite.animation = &"walk_south_west"
+		animated_sprite.animation = &"run_south_west" if run else &"walk_south_west"
 	elif angle_deg >= 157.5 or angle_deg < -157.5:
-		animated_sprite.animation = &"walk_west"
+		animated_sprite.animation = &"run_west" if run else &"walk_west"
 	elif angle_deg >= -157.5 and angle_deg < -112.5:
-		animated_sprite.animation = &"walk_north_west"
+		animated_sprite.animation = &"run_north_west" if run else &"walk_north_west"
 	elif angle_deg >= -112.5 and angle_deg < -67.5:
-		animated_sprite.animation = &"walk_north"
+		animated_sprite.animation = &"run_north" if run else &"walk_north"
 	else:  # [-67.5, -22.5)
-		animated_sprite.animation = &"walk_north_east"
+		animated_sprite.animation = &"run_north_east" if run else &"walk_north_east"
+
+
+func _update_idle_direction() -> void:
+	var angle_deg := rad_to_deg(facing_direction.angle())
 	animated_sprite.flip_h = false
+	# Idle só tem 4 direções cardinais; diagonais mapeiam para o cardinal mais próximo
+	# W não existe → usa east com flip
+	if angle_deg >= -67.5 and angle_deg < 67.5:
+		animated_sprite.animation = &"idle_east"
+	elif angle_deg >= 67.5 and angle_deg < 157.5:
+		animated_sprite.animation = &"idle_south"
+	elif angle_deg >= 157.5 or angle_deg < -157.5:
+		animated_sprite.animation = &"idle_east"
+		animated_sprite.flip_h = true
+	else:  # [-157.5, -67.5) → norte e diagonais norte
+		animated_sprite.animation = &"idle_north"
 
 
 func _update_footstep(delta: float, input_vector: Vector2) -> void:
@@ -372,7 +415,7 @@ func play_axe_swing(direction: Vector2) -> void:
 
 
 func is_attack_on_cooldown() -> bool:
-	return _attack_cooldown_frames > 0
+	return _attack_cooldown_frames > 0 or _is_swinging
 
 
 func set_survival_modifiers(speed_multiplier: float, stamina_regen_multiplier: float) -> void:
