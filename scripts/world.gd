@@ -36,6 +36,21 @@ const PLAYER_VISION_RANGE := 280.0
 const PLAYER_VISION_DOT_THRESHOLD := 0.45
 const REFLECTOR_RADIUS := 212.0
 
+# — Mimic (sabotageia o gerador)
+const MIMIC_SPEED := 55.0
+const MIMIC_FLEE_SPEED := 170.0
+const MIMIC_FLEE_RADIUS := 96.0        # distância para fugir do player
+const MIMIC_SABOTAGE_RADIUS := 40.0   # distância para desligar o gerador
+const MIMIC_MIN_TRIGGER := 30.0       # quando pode aparecer na noite (segundos)
+const MIMIC_MAX_TRIGGER := 80.0
+
+# — Wendigo (anunciado, carrega o player; escala por noite)
+const WENDIGO_WARNING_DURATION := 14.0  # janela para o player se proteger
+const WENDIGO_CHARGE_SPEED := 255.0
+const WENDIGO_CHARGE_DURATION := 7.0    # desiste após esse tempo
+const WENDIGO_COOLDOWN_MIN := 38.0
+const WENDIGO_COOLDOWN_MAX := 65.0
+
 const HUNGER_MAX := 100.0
 const THIRST_MAX := 100.0
 const HEALTH_MAX := 100.0
@@ -71,6 +86,19 @@ enum HostileEventState {
 	WARNING,
 	ACTIVE,
 	COOLDOWN,
+}
+
+enum MimicState {
+	INACTIVE,    # aguardando o timer de spawn
+	APPROACHING, # caminhando em direção ao gerador
+	FLEEING,     # fugindo do player ou após sabotagem
+	DONE,        # já apareceu esta noite
+}
+
+enum WendigoState {
+	INACTIVE,  # aguardando cooldown
+	WARNING,   # brado ouvido — janela para o player se proteger
+	CHARGING,  # carregando em direção ao player
 }
 
 enum TutorialPhase {
@@ -218,6 +246,23 @@ var _darkwatcher_sprite: AnimatedSprite2D = null
 var _darkwatcher_area: Area2D = null
 var _darkwatcher_dialogue_index := 0
 
+# — Alerta do gerador (timer para limpar a mensagem)
+var _generator_alert_timer := 0.0
+
+# — Mimic
+var _mimic_state := MimicState.INACTIVE
+var _mimic_node: Node2D = null
+var _mimic_trigger_timer := 0.0
+var _mimic_flee_timer := 0.0
+
+# — Wendigo
+var _wendigo_state := WendigoState.INACTIVE
+var _wendigo_state_timer := 0.0
+var _wendigo_node: Node2D = null
+var _wendigo_appearances_tonight := 0
+var _wendigo_max_tonight := 0
+var _wendigo_cooldown_timer := 0.0
+
 # ── Inventário ────────────────────────────────────────────────────────────────
 var _inventory_data: InventoryData = null
 var _inventory_ui:   InventoryUI   = null
@@ -272,6 +317,8 @@ func _process(delta: float) -> void:
 	_update_generator(delta)
 	_update_survival_stats(delta)
 	_update_hostile_event(delta)
+	_update_mimic(delta)
+	_update_wendigo(delta)
 	_update_active_interaction()
 	_apply_survival_modifiers()
 	_refresh_ui()
@@ -299,6 +346,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed and not event.echo:
 		if event.physical_keycode == KEY_O:
 			_trigger_hostile_warning_debug()
+			return
+		if event.physical_keycode == KEY_P:
+			if _is_night and _wendigo_state == WendigoState.INACTIVE:
+				_wendigo_cooldown_timer = 0.0
+			return
+		if event.physical_keycode == KEY_I:
+			if _is_night and _mimic_state == MimicState.INACTIVE:
+				_mimic_trigger_timer = 0.0
 			return
 		_try_hotbar_selection(event.physical_keycode)
 
@@ -697,11 +752,24 @@ func _advance_day_phase() -> void:
 		_stop_hostile_event(false)
 		_generator_active = false
 		_hostile_alert_text = ""
+		_clear_mimic()
+		_mimic_state = MimicState.INACTIVE
+		_clear_wendigo()
+		_wendigo_state = WendigoState.INACTIVE
 		if _day_number == 2 and _darkwatcher_phase == DarkwatcherPhase.INACTIVE:
 			_spawn_darkwatcher()
 	else:
 		_is_night = true
 		_schedule_next_hostile_event()
+		# Mimic: garante uma aparição por noite, horário aleatório
+		_mimic_state = MimicState.INACTIVE
+		_mimic_trigger_timer = randf_range(MIMIC_MIN_TRIGGER, MIMIC_MAX_TRIGGER)
+		# Wendigo: escala com o número de noites (_day_number é o número da noite atual)
+		_wendigo_appearances_tonight = 0
+		_wendigo_max_tonight = _day_number / 2  # noite 1→0, noites 2-3→1, noites 4-5→2...
+		_wendigo_state = WendigoState.INACTIVE
+		_wendigo_state_timer = 0.0
+		_wendigo_cooldown_timer = randf_range(WENDIGO_COOLDOWN_MIN, WENDIGO_COOLDOWN_MAX)
 		if _day_number == 1 and not _first_night_done and _tutorial_phase != TutorialPhase.DEAD:
 			_begin_tutorial_night_sequence()
 
@@ -783,6 +851,11 @@ func _update_wood_sources(delta: float) -> void:
 
 
 func _update_generator(delta: float) -> void:
+	if _generator_alert_timer > 0.0:
+		_generator_alert_timer = max(_generator_alert_timer - delta, 0.0)
+		if _generator_alert_timer <= 0.0:
+			_hostile_alert_text = ""
+
 	if not _generator_active:
 		_refresh_generator_visuals()
 		return
@@ -878,7 +951,6 @@ func _update_hostile_event(delta: float) -> void:
 	match _hostile_state:
 		HostileEventState.IDLE:
 			if _is_farm_defended():
-				_hostile_alert_text = "Refletores ativos. A fazenda respira."
 				return
 
 			_hostile_trigger_timer = max(_hostile_trigger_timer - delta, 0.0)
@@ -1039,6 +1111,181 @@ func _clear_active_enemy() -> void:
 	if is_instance_valid(_active_enemy):
 		_active_enemy.queue_free()
 	_active_enemy = null
+
+
+# ─── Mimic ────────────────────────────────────────────────────────────────────
+
+func _update_mimic(delta: float) -> void:
+	if not _is_night:
+		return
+
+	match _mimic_state:
+		MimicState.INACTIVE:
+			_mimic_trigger_timer = max(_mimic_trigger_timer - delta, 0.0)
+			if _mimic_trigger_timer <= 0.0:
+				_spawn_mimic()
+
+		MimicState.APPROACHING:
+			if not is_instance_valid(_mimic_node):
+				_mimic_state = MimicState.DONE
+				return
+
+			# Foge se o player chegar perto
+			if _mimic_node.global_position.distance_to(player.global_position) <= MIMIC_FLEE_RADIUS:
+				_hostile_alert_text = "Algo estranho disparou para as sombras."
+				_mimic_flee_timer = 3.5
+				_mimic_state = MimicState.FLEEING
+				return
+
+			# Chegou ao gerador → sabotagem
+			var gen_pos := _generator_area.global_position
+			if _mimic_node.global_position.distance_to(gen_pos) <= MIMIC_SABOTAGE_RADIUS:
+				_generator_active = false
+				_hostile_alert_text = "Os refletores apagaram. O Mimic sabotou o gerador!"
+				_mimic_flee_timer = 4.0
+				_mimic_state = MimicState.FLEEING
+				return
+
+			var dir := (gen_pos - _mimic_node.global_position).normalized()
+			_mimic_node.global_position += dir * MIMIC_SPEED * delta
+
+		MimicState.FLEEING:
+			if not is_instance_valid(_mimic_node):
+				_mimic_state = MimicState.DONE
+				return
+
+			_mimic_flee_timer = max(_mimic_flee_timer - delta, 0.0)
+			# Foge na direção oposta ao centro da fazenda
+			var farm_center := Vector2(420, 520)
+			var flee_dir := (_mimic_node.global_position - farm_center).normalized()
+			_mimic_node.global_position += flee_dir * MIMIC_FLEE_SPEED * delta
+
+			if _mimic_flee_timer <= 0.0:
+				_clear_mimic()
+				_mimic_state = MimicState.DONE
+
+		MimicState.DONE:
+			pass
+
+
+func _spawn_mimic() -> void:
+	_mimic_state = MimicState.APPROACHING
+	_hostile_alert_text = "Uma presença silenciosa se move pela escuridao."
+
+	_mimic_node = Node2D.new()
+	_mimic_node.name = "Mimic"
+	# Spawna no canto direito do mapa, fora dos refletores
+	_mimic_node.global_position = Vector2(820, 468)
+
+	# PLACEHOLDER — substituir por AnimatedSprite2D quando asset disponível
+	var body := Polygon2D.new()
+	body.color = Color(0.14, 0.13, 0.22, 0.92)
+	body.polygon = PackedVector2Array([
+		Vector2(-7, -9), Vector2(7, -9),
+		Vector2(9, 7), Vector2(-9, 7),
+	])
+	_mimic_node.add_child(body)
+	add_child(_mimic_node)
+
+
+func _clear_mimic() -> void:
+	if is_instance_valid(_mimic_node):
+		_mimic_node.queue_free()
+	_mimic_node = null
+
+
+# ─── Wendigo ──────────────────────────────────────────────────────────────────
+
+func _update_wendigo(delta: float) -> void:
+	if not _is_night or _wendigo_max_tonight <= 0:
+		return
+	if _wendigo_appearances_tonight >= _wendigo_max_tonight:
+		return
+
+	match _wendigo_state:
+		WendigoState.INACTIVE:
+			_wendigo_cooldown_timer = max(_wendigo_cooldown_timer - delta, 0.0)
+			if _wendigo_cooldown_timer <= 0.0:
+				_begin_wendigo_warning()
+
+		WendigoState.WARNING:
+			_wendigo_state_timer = max(_wendigo_state_timer - delta, 0.0)
+			if _wendigo_state_timer <= 0.0:
+				_spawn_wendigo()
+
+		WendigoState.CHARGING:
+			if not is_instance_valid(_wendigo_node):
+				_resolve_wendigo_event()
+				return
+
+			_wendigo_state_timer = max(_wendigo_state_timer - delta, 0.0)
+
+			var wpos := _wendigo_node.global_position
+
+			# Luz repele o Wendigo
+			if _is_position_in_light(wpos):
+				_hostile_alert_text = "A luz afastou o Wendigo."
+				_clear_wendigo()
+				_resolve_wendigo_event()
+				return
+
+			# Alcançou o player
+			if wpos.distance_to(player.global_position) <= 38.0:
+				_clear_wendigo()
+				_resolve_wendigo_event()
+				_start_player_expulsion()
+				return
+
+			# Tempo esgotado — desiste
+			if _wendigo_state_timer <= 0.0:
+				_hostile_alert_text = "O Wendigo desapareceu na escuridao."
+				_clear_wendigo()
+				_resolve_wendigo_event()
+				return
+
+			var dir := (player.global_position - wpos).normalized()
+			_wendigo_node.global_position += dir * WENDIGO_CHARGE_SPEED * delta
+
+
+func _begin_wendigo_warning() -> void:
+	_wendigo_state = WendigoState.WARNING
+	_wendigo_state_timer = WENDIGO_WARNING_DURATION
+	_hostile_alert_text = "Um brado atravessa a floresta. Algo se aproxima — fique na luz!"
+
+
+func _spawn_wendigo() -> void:
+	_wendigo_state = WendigoState.CHARGING
+	_wendigo_state_timer = WENDIGO_CHARGE_DURATION
+	_hostile_alert_text = "O Wendigo avancou!"
+
+	_wendigo_node = Node2D.new()
+	_wendigo_node.name = "Wendigo"
+	# Spawna do lado oposto ao player, fora do alcance dos refletores
+	var offset_dir := (player.global_position - Vector2(420, 520)).normalized()
+	_wendigo_node.global_position = player.global_position - offset_dir * 420.0
+
+	# PLACEHOLDER — substituir por AnimatedSprite2D quando asset disponível
+	var body := Polygon2D.new()
+	body.color = Color(0.72, 0.72, 0.78, 0.88)
+	body.polygon = PackedVector2Array([
+		Vector2(-7, -13), Vector2(7, -13),
+		Vector2(9, 11), Vector2(-9, 11),
+	])
+	_wendigo_node.add_child(body)
+	add_child(_wendigo_node)
+
+
+func _resolve_wendigo_event() -> void:
+	_wendigo_appearances_tonight += 1
+	_wendigo_state = WendigoState.INACTIVE
+	_wendigo_state_timer = 0.0
+	_wendigo_cooldown_timer = randf_range(WENDIGO_COOLDOWN_MIN, WENDIGO_COOLDOWN_MAX)
+
+
+func _clear_wendigo() -> void:
+	if is_instance_valid(_wendigo_node):
+		_wendigo_node.queue_free()
+	_wendigo_node = null
 
 
 func _is_enemy_in_player_vision(enemy_position: Vector2) -> bool:
@@ -1348,7 +1595,8 @@ func _interact_with_generator() -> void:
 		_generator_fuel += GENERATOR_FUEL_PER_WOOD * wood_count
 		_generator_active = true
 		var nights := _generator_fuel / NIGHT_DURATION
-		_hostile_alert_text = "%d madeiras depositadas (~%.1f noites)." % [wood_count, nights]
+		_hostile_alert_text = "%d madeiras depositadas (~%.1f noites). Refletores ativos." % [wood_count, nights]
+		_generator_alert_timer = 5.0
 		_refresh_generator_visuals()
 		return
 
@@ -1356,7 +1604,12 @@ func _interact_with_generator() -> void:
 		return
 
 	_generator_active = not _generator_active
-	_hostile_alert_text = "Refletores ligados." if _generator_active else "Refletores desligados."
+	if _generator_active:
+		_hostile_alert_text = "Refletores ligados."
+		_generator_alert_timer = 5.0
+	else:
+		_hostile_alert_text = "Refletores desligados."
+		_generator_alert_timer = 3.0
 	_refresh_generator_visuals()
 
 
