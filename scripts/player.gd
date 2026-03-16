@@ -8,13 +8,13 @@ enum MovementState {
 }
 
 const MOVE_SPEED := 96.0
-const SPRINT_SPEED := 300.0
+const SPRINT_SPEED := 150.0
 const EXHAUSTED_SPEED := 52.0
 const GROUND_ACCELERATION := 540.0
 const GROUND_DECELERATION := 420.0
 const TURN_ACCELERATION := 360.0
 const SPRINT_ACCELERATION := 860.0
-const SPRINT_DECELERATION := 1600.0
+const SPRINT_DECELERATION := 3000.0
 const SPRINT_TURN_ACCELERATION := 1400.0
 const MAX_STAMINA := 10.0
 const STAMINA_DRAIN_PER_SECOND := 3.2
@@ -36,12 +36,44 @@ var _regen_cooldown := 0.0
 var _external_speed_multiplier := 1.0
 var _external_stamina_regen_multiplier := 1.0
 var _animation_speed_multiplier := 1.0
+var _footstep_player: AudioStreamPlayer
+var _footstep_timer := 0.0
+var _swing_axe_player: AudioStreamPlayer
+var _is_swinging := false
+var _attack_cooldown_frames := 0
 
 
 func _ready() -> void:
 	camera.position_smoothing_speed = CAMERA_SMOOTHING_SPEED
 	_default_camera_smoothing = camera.position_smoothing_enabled
 	_ensure_input_actions()
+	_setup_footstep_audio()
+	_setup_axe_animation()
+	animated_sprite.animation_finished.connect(_on_animation_finished)
+	animated_sprite.frame_changed.connect(_on_frame_changed)
+
+
+func _setup_axe_animation() -> void:
+	var frames := animated_sprite.sprite_frames
+	if frames.has_animation(&"axe_swing"):
+		return
+	frames.add_animation(&"axe_swing")
+	frames.set_animation_speed(&"axe_swing", 12.0)
+	frames.set_animation_loop(&"axe_swing", false)
+	for i in range(9):
+		var path := "res://assets/Characters/Prota/animations/custom-swinging an axe/east/frame_%03d.png" % i
+		frames.add_frame(&"axe_swing", load(path) as Texture2D)
+
+
+func _setup_footstep_audio() -> void:
+	_footstep_player = AudioStreamPlayer.new()
+	_footstep_player.stream = load("res://assets/sfx/footstep.wav")
+	_footstep_player.volume_db = 0.0
+	add_child(_footstep_player)
+	_swing_axe_player = AudioStreamPlayer.new()
+	_swing_axe_player.stream = load("res://assets/sfx/swingaxe.wav")
+	_swing_axe_player.volume_db = 0.0
+	add_child(_swing_axe_player)
 
 
 func _physics_process(delta: float) -> void:
@@ -55,6 +87,9 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 	_update_animation_state()
+	_update_footstep(delta, input_vector)
+	if _attack_cooldown_frames > 0:
+		_attack_cooldown_frames -= 1
 
 
 func _ensure_input_actions() -> void:
@@ -122,7 +157,7 @@ func restore_camera_after_room_transition() -> void:
 
 
 func _get_input_vector() -> Vector2:
-	if _movement_locked:
+	if _movement_locked or _is_swinging:
 		return Vector2.ZERO
 
 	var horizontal := Input.get_axis("move_left", "move_right")
@@ -234,6 +269,16 @@ func get_stamina_ratio() -> float:
 	return _stamina / MAX_STAMINA
 
 
+func drain_stamina(amount: float) -> bool:
+	if _stamina < amount:
+		return false
+	_stamina -= amount
+	_regen_cooldown = EXHAUSTED_REGEN_DELAY
+	if _stamina <= 0.0:
+		_enter_exhausted_state()
+	return true
+
+
 func get_facing_direction() -> Vector2:
 	return facing_direction.normalized() if facing_direction != Vector2.ZERO else Vector2.DOWN
 
@@ -250,7 +295,20 @@ func is_exhausted() -> bool:
 	return movement_state == MovementState.EXHAUSTED
 
 
+func _on_animation_finished() -> void:
+	if _is_swinging:
+		_is_swinging = false
+
+
+func _on_frame_changed() -> void:
+	if _is_swinging and animated_sprite.frame == 5:
+		_swing_axe_player.play()
+
+
 func _update_animation_state() -> void:
+	if _is_swinging:
+		return
+
 	var velocity_magnitude = velocity.length()
 
 	if velocity_magnitude > 1.0:
@@ -292,6 +350,29 @@ func _update_sprite_direction() -> void:
 	else:  # [-67.5, -22.5)
 		animated_sprite.animation = &"walk_north_east"
 	animated_sprite.flip_h = false
+
+
+func _update_footstep(delta: float, input_vector: Vector2) -> void:
+	if input_vector == Vector2.ZERO or velocity.length_squared() < 1.0:
+		_footstep_timer = 0.0
+		return
+
+	var interval := 0.25 if movement_state == MovementState.SPRINTING else 0.375
+	_footstep_timer += delta
+	if _footstep_timer >= interval:
+		_footstep_timer = fmod(_footstep_timer, interval)
+		_footstep_player.play()
+
+
+func play_axe_swing(direction: Vector2) -> void:
+	_is_swinging = true
+	_attack_cooldown_frames = 8
+	animated_sprite.flip_h = direction.x < 0.0
+	animated_sprite.play(&"axe_swing")
+
+
+func is_attack_on_cooldown() -> bool:
+	return _attack_cooldown_frames > 0
 
 
 func set_survival_modifiers(speed_multiplier: float, stamina_regen_multiplier: float) -> void:

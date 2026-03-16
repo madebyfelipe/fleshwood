@@ -12,7 +12,7 @@ script = ExtResource("1_2f3dx")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1315306661]
 sprite_frames = ExtResource("2_4jxlm")
-animation = &"walk_south"
+animation = &"swing_axe"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=119251008]
 position = Vector2(0, 8)

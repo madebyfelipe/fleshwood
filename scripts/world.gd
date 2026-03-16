@@ -25,6 +25,7 @@ const WELL_THIRST_RESTORE := 34.0
 const CROP_HUNGER_RESTORE := 24.0
 const TREE_RESPAWN_DURATION := 55.0
 const WOOD_PER_CHOP := 2
+const TREE_HITS_TO_FALL := 4
 const GENERATOR_WOOD_PER_NIGHT := 30
 const GENERATOR_FUEL_PER_WOOD := NIGHT_DURATION / float(GENERATOR_WOOD_PER_NIGHT)
 const GENERATOR_FUEL_DRAIN_PER_SECOND := 1.0
@@ -248,6 +249,7 @@ var _darkwatcher_dialogue_index := 0
 
 # — Alerta do gerador (timer para limpar a mensagem)
 var _generator_alert_timer := 0.0
+var _generator_hits := 0
 
 # — Mimic
 var _mimic_state := MimicState.INACTIVE
@@ -630,6 +632,7 @@ func _cache_tree_sources() -> void:
 			"body": body,
 			"available": true,
 			"respawn_timer": 0.0,
+			"hits": 0,
 		})
 
 
@@ -842,6 +845,7 @@ func _update_wood_sources(delta: float) -> void:
 			continue
 
 		source["available"] = true
+		source["hits"] = 0
 		var visual := source["visual"] as Sprite2D
 		visual.visible = true
 		var body := source["body"] as StaticBody2D
@@ -1170,7 +1174,6 @@ func _update_mimic(delta: float) -> void:
 
 func _spawn_mimic() -> void:
 	_mimic_state = MimicState.APPROACHING
-	_hostile_alert_text = "Uma presença silenciosa se move pela escuridao."
 
 	_mimic_node = Node2D.new()
 	_mimic_node.name = "Mimic"
@@ -1460,6 +1463,8 @@ func _get_prompt_for_type(interaction_type: String, plot_index: int = -1) -> Str
 		"generator":
 			var wood_count := _get_item_count(ITEM_WOOD)
 			if _get_selected_item_id() == ITEM_WOOD and wood_count > 0:
+				if _generator_hits > 0:
+					return "F para carregar (%d/%d)" % [_generator_hits, TREE_HITS_TO_FALL]
 				return "F para depositar %d madeiras no gerador" % wood_count
 			if wood_count > 0:
 				return "Equipe a lenha para abastecer o gerador"
@@ -1591,6 +1596,15 @@ func _try_interact() -> void:
 func _interact_with_generator() -> void:
 	var wood_count := _get_item_count(ITEM_WOOD)
 	if _get_selected_item_id() == ITEM_WOOD and wood_count > 0:
+		var stamina_cost := PlayerController.MAX_STAMINA / 8.0
+		if not player.drain_stamina(stamina_cost):
+			return
+		_generator_hits += 1
+		if _generator_hits < TREE_HITS_TO_FALL:
+			_hostile_alert_text = "Carregando gerador... %d/%d" % [_generator_hits, TREE_HITS_TO_FALL]
+			_generator_alert_timer = 2.0
+			return
+		_generator_hits = 0
 		_remove_item(ITEM_WOOD, wood_count)
 		_generator_fuel += GENERATOR_FUEL_PER_WOOD * wood_count
 		_generator_active = true
@@ -1643,11 +1657,24 @@ func _harvest_wood_source(source_index: int) -> void:
 		return
 	if _get_selected_item_id() != ITEM_AXE:
 		return
+	if player.is_attack_on_cooldown():
+		return
+	var stamina_cost := PlayerController.MAX_STAMINA / 8.0
+	if not player.drain_stamina(stamina_cost):
+		return
+	player.play_axe_swing(player.get_facing_direction())
+
+	source["hits"] = int(source["hits"]) + 1
+	if int(source["hits"]) < TREE_HITS_TO_FALL:
+		return
+
 	if not _add_item(ITEM_WOOD, "Lenha", WOOD_PER_CHOP):
+		source["hits"] = int(source["hits"]) - 1
 		return
 
 	source["available"] = false
 	source["respawn_timer"] = TREE_RESPAWN_DURATION
+	source["hits"] = 0
 	var visual := source["visual"] as Sprite2D
 	visual.visible = false
 	var body := source["body"] as StaticBody2D

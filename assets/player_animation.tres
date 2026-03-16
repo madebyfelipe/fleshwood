@@ -1,14 +1,23 @@
 [gd_resource type="SpriteFrames" format=3 uid="uid://cxf3pq2m7jvam"]
 
 [ext_resource type="Texture2D" uid="uid://dysiqu2tfaq0a" path="res://assets/Characters/Prota/animations/walking-6-frames/east/frame_000.png" id="1"]
+[ext_resource type="Texture2D" uid="uid://cxg7vrjn5sluj" path="res://assets/Characters/Prota/animations/custom-swinging an axe/east/frame_000.png" id="1_dkb01"]
 [ext_resource type="Texture2D" uid="uid://cbh1e7h14ntme" path="res://assets/Characters/Prota/animations/walking-6-frames/east/frame_001.png" id="2"]
+[ext_resource type="Texture2D" uid="uid://br24ch7uxmafx" path="res://assets/Characters/Prota/animations/custom-swinging an axe/east/frame_001.png" id="2_aotne"]
 [ext_resource type="Texture2D" uid="uid://b46m1mscllnl7" path="res://assets/Characters/Prota/animations/walking-6-frames/east/frame_002.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://coo07jqik4un4" path="res://assets/Characters/Prota/animations/custom-swinging an axe/east/frame_002.png" id="3_ucs33"]
 [ext_resource type="Texture2D" uid="uid://02ibt1pcrhv8" path="res://assets/Characters/Prota/animations/walking-6-frames/east/frame_003.png" id="4"]
+[ext_resource type="Texture2D" uid="uid://umiedlalym48" path="res://assets/Characters/Prota/animations/custom-swinging an axe/east/frame_003.png" id="4_rr7tp"]
 [ext_resource type="Texture2D" uid="uid://74fq05dmjaeh" path="res://assets/Characters/Prota/animations/walking-6-frames/east/frame_004.png" id="5"]
+[ext_resource type="Texture2D" uid="uid://dkfwuhedok81" path="res://assets/Characters/Prota/animations/custom-swinging an axe/east/frame_004.png" id="5_4vwmo"]
 [ext_resource type="Texture2D" uid="uid://btw2tblbndx67" path="res://assets/Characters/Prota/animations/walking-6-frames/east/frame_005.png" id="6"]
+[ext_resource type="Texture2D" uid="uid://doh4emis4uxn0" path="res://assets/Characters/Prota/animations/custom-swinging an axe/east/frame_005.png" id="6_drgq0"]
 [ext_resource type="Texture2D" uid="uid://bpplj1410v2sn" path="res://assets/Characters/Prota/animations/walking-6-frames/north-east/frame_000.png" id="7"]
+[ext_resource type="Texture2D" uid="uid://dg5pqnqupcweg" path="res://assets/Characters/Prota/animations/custom-swinging an axe/east/frame_006.png" id="7_d4ks3"]
 [ext_resource type="Texture2D" uid="uid://oj4vq4yjyf6j" path="res://assets/Characters/Prota/animations/walking-6-frames/north-east/frame_001.png" id="8"]
+[ext_resource type="Texture2D" uid="uid://d15ic4l4miiah" path="res://assets/Characters/Prota/animations/custom-swinging an axe/east/frame_007.png" id="8_scny4"]
 [ext_resource type="Texture2D" uid="uid://mr12xrduwub5" path="res://assets/Characters/Prota/animations/walking-6-frames/north-east/frame_002.png" id="9"]
+[ext_resource type="Texture2D" uid="uid://bawq3wv0nkcu7" path="res://assets/Characters/Prota/animations/custom-swinging an axe/east/frame_008.png" id="9_rwww3"]
 [ext_resource type="Texture2D" uid="uid://48tmf70pbb1n" path="res://assets/Characters/Prota/animations/walking-6-frames/north-east/frame_003.png" id="10"]
 [ext_resource type="Texture2D" uid="uid://chx2foqlfxby8" path="res://assets/Characters/Prota/animations/walking-6-frames/north-east/frame_004.png" id="11"]
 [ext_resource type="Texture2D" uid="uid://cry25suy7suxa" path="res://assets/Characters/Prota/animations/walking-6-frames/north-east/frame_005.png" id="12"]
@@ -51,6 +60,38 @@
 
 [resource]
 animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("1_dkb01")
+}, {
+"duration": 1.0,
+"texture": ExtResource("2_aotne")
+}, {
+"duration": 1.0,
+"texture": ExtResource("3_ucs33")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4_rr7tp")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_4vwmo")
+}, {
+"duration": 1.0,
+"texture": ExtResource("6_drgq0")
+}, {
+"duration": 1.0,
+"texture": ExtResource("7_d4ks3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("8_scny4")
+}, {
+"duration": 1.0,
+"texture": ExtResource("9_rwww3")
+}],
+"loop": true,
+"name": &"swing_axe",
+"speed": 8.0
+}, {
 "frames": [{
 "duration": 1.0,
 "texture": ExtResource("1")
