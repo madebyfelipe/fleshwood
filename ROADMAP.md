@@ -158,6 +158,15 @@ Fazenda (base segura)
 
 ---
 
+## TODO — 2026-03-17
+
+- [ ] Subir arte do Wendigo (spritesheet/frames)
+- [ ] Alterar funcionamento da lanterna
+- [ ] Adicionar novas sementes
+- [ ] Adicionar novos inimigos
+
+---
+
 ## O que NÃO fazer antes da hora
 
 - Não implementar Wendigo/Mimic antes do stealth funcionar

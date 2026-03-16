@@ -5,6 +5,11 @@ size = Vector2(56, 72)
 
 [node name="Vendor" type="Area2D"]
 
+[node name="Shadow" type="Polygon2D" parent="."]
+position = Vector2(0, 28)
+color = Color(0, 0, 0, 0.38)
+polygon = PackedVector2Array(9, 0, 7.8, 1.5, 4.5, 2.6, 0, 3, -4.5, 2.6, -7.8, 1.5, -9, 0, -7.8, -1.5, -4.5, -2.6, 0, -3, 4.5, -2.6, 7.8, -1.5)
+
 [node name="Visual" type="Polygon2D" parent="."]
 color = Color(0.596078, 0.360784, 0.207843, 1)
 polygon = PackedVector2Array(-20, 30, -26, -10, -10, -34, 10, -34, 26, -10, 20, 30)

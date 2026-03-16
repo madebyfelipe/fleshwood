@@ -10,6 +10,11 @@ size = Vector2(10, 12)
 z_index = 20
 script = ExtResource("1_2f3dx")
 
+[node name="Shadow" type="Polygon2D" parent="."]
+position = Vector2(0, 14)
+color = Color(0, 0, 0, 0.38)
+polygon = PackedVector2Array(7, 0, 6.1, 1.25, 3.5, 2.17, 0, 2.5, -3.5, 2.17, -6.1, 1.25, -7, 0, -6.1, -1.25, -3.5, -2.17, 0, -2.5, 3.5, -2.17, 6.1, -1.25)
+
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1315306661]
 sprite_frames = ExtResource("2_4jxlm")
 animation = &"swing_axe"

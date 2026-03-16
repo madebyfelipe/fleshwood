@@ -15,6 +15,8 @@ var TEX_ICON_BREAD: Texture2D = null
 const INTERACT_DISTANCE := 56.0
 const DAY_DURATION := 180.0
 const NIGHT_DURATION := 135.0
+const DAWN_HOUR := 7   # 07:00 — amanhecer
+const DUSK_HOUR := 19  # 19:00 — anoitecer
 const SELL_PRICE := 12
 const INITIAL_SEED_AMOUNT := 10
 const VENDOR_SEED_BUNDLE_AMOUNT := 10
@@ -32,11 +34,14 @@ const GENERATOR_FUEL_PER_WOOD := NIGHT_DURATION / float(GENERATOR_WOOD_PER_NIGHT
 const GENERATOR_FUEL_DRAIN_PER_SECOND := 1.0
 const NIGHT_WARNING_DELAY := 5.0
 const HOSTILE_COOLDOWN_DURATION := 5.0
+const FOREST_DAY_WARNING_DELAY := 35.0
 const PLAYER_EXPULSION_OFFSET := Vector2(0, 72)
 const PLAYER_COLLAPSE_COIN_PENALTY := 10
 const PLAYER_VISION_RANGE := 280.0
 const PLAYER_VISION_DOT_THRESHOLD := 0.45
 const REFLECTOR_RADIUS := 212.0
+const FLASHLIGHT_RANGE := 320.0
+const FLASHLIGHT_CONE_DOT := 0.82  # cos(35°) — cone total de ~70°
 
 # — Mimic (sabotageia o gerador)
 const MIMIC_SPEED := 55.0
@@ -57,6 +62,12 @@ const HUNGER_MAX := 100.0
 const THIRST_MAX := 100.0
 const HEALTH_MAX := 100.0
 const HUNGER_DRAIN_PER_SECOND := 0.22
+
+# ── Ansiedade (chase sequence) ────────────────────────────────────────────────
+const MAX_ANXIETY_DISTANCE := 380.0
+const MIN_ANXIETY_DISTANCE := 70.0
+const ANXIETY_FADE_IN_SPEED := 2.0
+const ANXIETY_FADE_OUT_SPEED := 1.2
 const THIRST_DRAIN_PER_SECOND := 0.34
 const HEALTH_DECAY_PER_SECOND := 5.5
 const HEALTH_RECOVERY_PER_SECOND := 1.2
@@ -124,32 +135,38 @@ enum DarkwatcherPhase {
 const TUTORIAL_NPC_SPEED := 70.0
 const TUTORIAL_NPC_NAME := "Caim"
 const TUTORIAL_LINES := [
-	"Sobrevivente. Ainda bem que voce chegou.",
-	"Esta terra devora os despreparados. Mas pode ser domada.",
-	"Veja os canteiros: plante sementes com [F], regue com o balde, colha quando amarelo.",
-	"Venda a colheita na caixa vermelha. O vendedor vende sementes por moedas.",
-	"O fogao dentro de casa transforma 2 trigos em pao - mais nutritivo que comer cru.",
-	"A noite traz o Goatman. Corte lenha e deposite no gerador. Trinta madeiras duram a noite.",
-	"Os refletores o afastam. Sem luz, voce e presa. Cuide da fome e da sede.",
-	"E tudo que sei. Sobreviva.",
+	"Hey, son! It's great to have you around.",
+	"I am far from a young man so I really appreciate your help with the ranch.",
+	"I need you to plant the seeds I left inside. Plant them using [F], water with the bucket, harvest when yellow.",
+	"Once it's finished, deposit them on the box by the left of the house. A man in suit will come by and get it every other day.",
+	"If you feel hungry, feel free to use the wheat to make some bread using the cooking pot inside.",
+	"Also, take my word for that: DO NOT go outside at night. I keep some lights around to help with it, but trust my word for that",
+	"Can't say much about it, you'll have to take my word for that. Sorry, boy,",
+	"Anyways, about that seeds, once you're finished we'll get some firewood in the forest.",
 ]
 
 const DARKWATCHER_NAME := "Observador"
 const DARKWATCHER_LINES := [
-	"Voce sobreviveu a primeira noite. Poucas almas conseguem isso.",
-	"O homem que vivia aqui... o fazendeiro. Ele durou tres noites. Na quarta, o Goatman o encontrou fora dos refletores.",
-	"Nao vou fingir ser o que nao sou. Nao sou humano. Sou algo anterior a esta terra, anterior a esses campos e a essa floresta.",
-	"Mas tenho interesse em que voce viva. Ha algo nesta floresta que eu preciso — e so maos vivas podem encontra-lo.",
-	"Por enquanto: plante, colha, sobreviva. Mantenha os refletores acesos a noite. Eu voltarei quando for necessario.",
+	"Greetings, young man.",
+	"I do not recognize you, but I can tell you had some sort of deal with the old man who was before you.",
+	"How'd I know? Some things are better left unknown...",
+	"I have great news, though! You can use the coins I just gave you to get new tools for your new endeavor.",
+	"What happened with the old man? You will find out, trust me. It's better we keep things professional, for both of us",
 ]
 
 @onready var world_visuals: Node2D = $WorldVisuals
 @onready var outside_door: Area2D = $OutsideDoor
 @onready var inside_door: Area2D = $InsideDoor
+@onready var forest_entrance: Area2D = $ForestEntrance
 @onready var player: PlayerController = $Player
 @onready var outside_spawn: Marker2D = $Markers/OutsideSpawn
 @onready var inside_spawn: Marker2D = $Markers/InsideSpawn
+@onready var forest_spawn: Marker2D = $Markers/ForestSpawn
+@onready var forest_return: Marker2D = $Markers/ForestReturn
+@onready var forest_exit: Area2D = $FlorestaDeCarne/ForestExit
 @onready var enemy_spawn: Marker2D = $Markers/EnemySpawn
+@onready var forest_enemy_spawn: Marker2D = $Markers/ForestEnemySpawn
+@onready var forest_enemy_route_markers: Node2D = $Markers/ForestEnemyRoute
 @onready var enemy_route_markers: Node2D = $Markers/EnemyRoute
 @onready var well: Area2D = $Well
 @onready var plots_container: Node2D = $CropField/Plots
@@ -161,6 +178,7 @@ const DARKWATCHER_LINES := [
 @onready var vendor: Area2D = $Vendor
 @onready var vendor_visual: Polygon2D = $Vendor/Visual
 @onready var trees_container: Node2D = $Trees
+@onready var forest_trees: Node2D = $FlorestaDeCarne/Trees
 @onready var transition_layer: CanvasLayer = $TransitionLayer
 @onready var night_rect: ColorRect = $TransitionLayer/NightRect
 @onready var prompt_panel: Panel = $TransitionLayer/PromptPanel
@@ -194,6 +212,7 @@ var _active_interaction: Dictionary = {}
 var _coins := 12
 var _day_number := 1
 var _is_night := false
+var _in_forest := false
 var _phase_elapsed := 0.0
 var _cycle_cheat_held := false
 var _hotbar: Array[Dictionary] = []
@@ -202,9 +221,12 @@ var _highlight_lines: Dictionary = {}
 var _hostile_state := HostileEventState.IDLE
 var _hostile_state_timer := 0.0
 var _hostile_trigger_timer := NIGHT_WARNING_DELAY
+var _warning_plays_remaining := 0
 var _hostile_route: Array[Vector2] = []
+var _forest_hostile_route: Array[Vector2] = []
 var _hostile_alert_text := ""
 var _active_enemy: FarmEnemy = null
+var _chase_audio: AudioStreamPlayer = null
 var _free_seed_claim_available := true
 var _hunger := HUNGER_MAX
 var _thirst := THIRST_MAX
@@ -215,11 +237,14 @@ var _thirst_bar_fill: ColorRect = null
 var _health_bar_fill: ColorRect = null
 var _stamina_bar_clip: Control = null
 var _stamina_bar_tile: TextureRect = null
-var _generator_area: Area2D = null
-var _generator_visual: Polygon2D = null
-var _generator_glow: Polygon2D = null
+@onready var _generator_area: Area2D = $Generator
+@onready var _generator_visual: Polygon2D = $Generator/Visual
+@onready var _generator_sprite: Sprite2D = $Generator/Sprite
+@onready var _generator_glow: Polygon2D = $Generator/Glow
+@onready var _reflectors_container: Node2D = $Reflectors
 var _reflector_positions: Array[Vector2] = []
 var _reflector_visuals: Array[Polygon2D] = []
+var _night_shader_mat: ShaderMaterial = null
 var _generator_fuel := 0.0
 var _generator_active := false
 var _wood_sources: Array[Dictionary] = []
@@ -249,10 +274,12 @@ var _darkwatcher_sprite: AnimatedSprite2D = null
 var _darkwatcher_area: Area2D = null
 var _darkwatcher_dialogue_index := 0
 var _lantern_bought := false
+var _flashlight_active := false
 
 # — Alerta do gerador (timer para limpar a mensagem)
 var _generator_alert_timer := 0.0
 var _generator_hits := 0
+var _generator_sabotaged := false
 
 # — Mimic
 var _mimic_state := MimicState.INACTIVE
@@ -267,6 +294,15 @@ var _wendigo_node: Node2D = null
 var _wendigo_appearances_tonight := 0
 var _wendigo_max_tonight := 0
 var _wendigo_cooldown_timer := 0.0
+
+# ── Ansiedade (chase sequence) ────────────────────────────────────────────────
+var _anxiety_layer: CanvasLayer = null
+var _vignette_rect: ColorRect = null
+var _tint_rect: ColorRect = null
+var _anxiety_shader_mat: ShaderMaterial = null
+var _anxiety_active := false
+var _anxiety_current := 0.0
+var _anxiety_pulse_time := 0.0
 
 # ── Inventário ────────────────────────────────────────────────────────────────
 var _inventory_data: InventoryData = null
@@ -295,20 +331,32 @@ func _ready() -> void:
 	_setup_inventory()
 	_cache_farm_plots()
 	_cache_enemy_route()
+	_cache_forest_enemy_route()
 	_create_runtime_farm_nodes()
 	_cache_tree_sources()
 	_setup_interaction_highlights()
 	_build_stamina_bar()
 	_build_survival_ui()
 	_build_tutorial_ui()
+	_create_anxiety_overlay()
 	player.global_position = outside_spawn.global_position
 	_refresh_generator_visuals()
 	_refresh_ui()
+
+	hostile_audio.stream = load("res://assets/sfx/danger1.wav")
+	hostile_audio.finished.connect(_on_warning_audio_finished)
+
+	_chase_audio = AudioStreamPlayer.new()
+	_chase_audio.stream = load("res://assets/sfx/chase sequence.wav")
+	_chase_audio.volume_db = 0.0
+	add_child(_chase_audio)
 
 	outside_door.body_entered.connect(_on_outside_door_body_entered)
 	outside_door.body_exited.connect(_on_outside_door_body_exited)
 	inside_door.body_entered.connect(_on_inside_door_body_entered)
 	inside_door.body_exited.connect(_on_inside_door_body_exited)
+	forest_entrance.body_entered.connect(_on_forest_entrance_body_entered)
+	forest_exit.body_entered.connect(_on_forest_exit_body_entered)
 
 
 func _process(delta: float) -> void:
@@ -327,7 +375,9 @@ func _process(delta: float) -> void:
 	_update_wendigo(delta)
 	_update_active_interaction()
 	_apply_survival_modifiers()
+	_update_anxiety(delta)
 	_refresh_ui()
+	_update_reflector_light_shader()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -396,11 +446,44 @@ func _action_has_key(action_name: String, keycode: int) -> bool:
 	return false
 
 
+const _NIGHT_SHADER := """
+shader_type canvas_item;
+uniform vec2 ref_pos_0 = vec2(-1.0, -1.0);
+uniform vec2 ref_pos_1 = vec2(-1.0, -1.0);
+uniform vec2 ref_pos_2 = vec2(-1.0, -1.0);
+uniform float light_radius = 0.68;
+uniform float light_radius_2 = 0.50;
+uniform float light_on = 0.0;
+uniform float light_on_2 = 0.0;
+void fragment() {
+	vec2 uv = SCREEN_UV;
+	float light = 0.0;
+	if (ref_pos_0.x >= 0.0) {
+		vec2 d = (uv - ref_pos_0) * vec2(1.7778, 1.0);
+		light = max(light, (1.0 - smoothstep(light_radius * 0.05, light_radius, length(d))) * light_on);
+	}
+	if (ref_pos_1.x >= 0.0) {
+		vec2 d = (uv - ref_pos_1) * vec2(1.7778, 1.0);
+		light = max(light, (1.0 - smoothstep(light_radius * 0.05, light_radius, length(d))) * light_on);
+	}
+	if (ref_pos_2.x >= 0.0) {
+		vec2 d = (uv - ref_pos_2) * vec2(1.7778, 1.0);
+		light = max(light, (1.0 - smoothstep(light_radius_2 * 0.05, light_radius_2, length(d))) * light_on_2);
+	}
+	COLOR.a *= 1.0 - light * 0.95;
+}
+"""
+
 func _configure_overlay() -> void:
 	night_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	fade_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	night_rect.color = Color(0.054902, 0.0862745, 0.180392, 0.0)
 	fade_rect.color = Color(0, 0, 0, 0)
+	var shd := Shader.new()
+	shd.code = _NIGHT_SHADER
+	_night_shader_mat = ShaderMaterial.new()
+	_night_shader_mat.shader = shd
+	night_rect.material = _night_shader_mat
 	stamina_fill.visible = false
 	stamina_backdrop.color = Color(0.12549, 0.219608, 0.305882, 1)
 
@@ -515,6 +598,14 @@ func _cache_enemy_route() -> void:
 			_hostile_route.append((child as Marker2D).global_position)
 
 
+func _cache_forest_enemy_route() -> void:
+	_forest_hostile_route.clear()
+
+	for child in forest_enemy_route_markers.get_children():
+		if child is Marker2D:
+			_forest_hostile_route.append((child as Marker2D).global_position)
+
+
 func _cache_farm_plots() -> void:
 	_plots.clear()
 
@@ -566,8 +657,7 @@ func _cache_farm_plots() -> void:
 
 
 func _create_runtime_farm_nodes() -> void:
-	_create_generator()
-	_create_reflectors()
+	_setup_reflectors()
 	_create_stove()
 	_create_tutorial_npc()
 
@@ -625,7 +715,13 @@ func _create_stove() -> void:
 func _cache_tree_sources() -> void:
 	_wood_sources.clear()
 
-	for child in trees_container.get_children():
+	var all_tree_containers: Array[Node2D] = [trees_container, forest_trees]
+	for container in all_tree_containers:
+		_cache_trees_from(container)
+
+
+func _cache_trees_from(container: Node2D) -> void:
+	for child in container.get_children():
 		var tree_root := child as Node2D
 		if tree_root == null:
 			continue
@@ -647,61 +743,16 @@ func _cache_tree_sources() -> void:
 		})
 
 
-func _create_generator() -> void:
-	_generator_area = Area2D.new()
-	_generator_area.name = "Generator"
-	_generator_area.position = Vector2(520, 468)
-	add_child(_generator_area)
-
-	var collision := CollisionShape2D.new()
-	var shape := RectangleShape2D.new()
-	shape.size = Vector2(54, 42)
-	collision.shape = shape
-	_generator_area.add_child(collision)
-
-	_generator_visual = Polygon2D.new()
-	_generator_visual.color = Color(0.364706, 0.380392, 0.396078, 1)
-	_generator_visual.polygon = PackedVector2Array([
-		Vector2(-22, -16),
-		Vector2(22, -16),
-		Vector2(24, 14),
-		Vector2(-24, 14),
-	])
-	_generator_area.add_child(_generator_visual)
-
-	_generator_glow = Polygon2D.new()
-	_generator_glow.color = Color(1.0, 0.878431, 0.431373, 0.0)
-	_generator_glow.polygon = PackedVector2Array([
-		Vector2(-26, -20),
-		Vector2(26, -20),
-		Vector2(28, 18),
-		Vector2(-28, 18),
-	])
-	_generator_glow.z_index = -1
-	_generator_area.add_child(_generator_glow)
-
-
-func _create_reflectors() -> void:
-	_reflector_positions = [
-		Vector2(286, 610),
-		Vector2(560, 610),
-	]
+func _setup_reflectors() -> void:
+	_reflector_positions.clear()
 	_reflector_visuals.clear()
 
-	for reflector_position in _reflector_positions:
-		var glow := Polygon2D.new()
-		glow.position = reflector_position
-		glow.color = Color(0.980392, 0.901961, 0.596078, 0.0)
-		glow.polygon = PackedVector2Array([
-			Vector2(-72, 16),
-			Vector2(-36, -140),
-			Vector2(0, -200),
-			Vector2(36, -140),
-			Vector2(72, 16),
-		])
-		glow.z_index = 1
-		world_visuals.add_child(glow)
-		_reflector_visuals.append(glow)
+	for reflector: Node2D in _reflectors_container.get_children():
+		_reflector_positions.append(reflector.global_position)
+		var cone := reflector.get_node_or_null("LightCone") as Polygon2D
+		if cone != null:
+			_reflector_visuals.append(cone)
+
 
 
 func _setup_interaction_highlights() -> void:
@@ -738,7 +789,7 @@ func _update_day_cycle(delta: float) -> void:
 	if _phase_elapsed >= current_duration:
 		_advance_day_phase()
 
-	var target_alpha := 0.5 if _is_night else 0.0
+	var target_alpha := 0.78 if _is_night else 0.0
 	var color := night_rect.color
 	color.a = move_toward(color.a, target_alpha, delta * 0.7)
 	night_rect.color = color
@@ -758,6 +809,23 @@ func _update_cycle_cheat() -> void:
 		_cycle_cheat_held = false
 
 
+# Retorna o horário de jogo atual em minutos totais (0–1439).
+# Dia:   07:00 (420) → 19:00 (1140) ao longo de DAY_DURATION segundos reais.
+# Noite: 19:00 (1140) → 07:00 (420) ao longo de NIGHT_DURATION segundos reais.
+func _get_game_minutes() -> float:
+	if _is_night:
+		var progress := clampf(_phase_elapsed / NIGHT_DURATION, 0.0, 1.0)
+		return fmod(DUSK_HOUR * 60.0 + progress * (24 - DUSK_HOUR + DAWN_HOUR) * 60.0, 1440.0)
+	else:
+		var progress := clampf(_phase_elapsed / DAY_DURATION, 0.0, 1.0)
+		return DAWN_HOUR * 60.0 + progress * (DUSK_HOUR - DAWN_HOUR) * 60.0
+
+
+func _get_time_string() -> String:
+	var total_min := int(_get_game_minutes())
+	return "%02d:%02d" % [total_min / 60, total_min % 60]
+
+
 func _advance_day_phase() -> void:
 	_phase_elapsed = 0.0
 	if _is_night:
@@ -765,11 +833,15 @@ func _advance_day_phase() -> void:
 		_is_night = false
 		_stop_hostile_event(false)
 		_generator_active = false
+		_generator_sabotaged = false
+		_generator_hits = 0
 		_hostile_alert_text = ""
 		_clear_mimic()
 		_mimic_state = MimicState.INACTIVE
 		_clear_wendigo()
 		_wendigo_state = WendigoState.INACTIVE
+		_flashlight_active = false
+		player.set_flashlight_on(false)
 		if _day_number == 2 and _darkwatcher_phase == DarkwatcherPhase.INACTIVE:
 			_spawn_darkwatcher()
 	else:
@@ -796,10 +868,11 @@ func _schedule_next_hostile_event() -> void:
 
 
 func _trigger_hostile_warning_debug() -> void:
-	if not _is_night or _is_transitioning:
+	if (not _is_night and not _in_forest) or _is_transitioning:
 		return
 
-	if _hostile_state != HostileEventState.IDLE or _hostile_route.is_empty():
+	var active_route := _forest_hostile_route if _in_forest else _hostile_route
+	if _hostile_state != HostileEventState.IDLE or active_route.is_empty():
 		return
 
 	_begin_hostile_warning()
@@ -960,19 +1033,20 @@ func _apply_survival_modifiers() -> void:
 
 
 func _update_hostile_event(delta: float) -> void:
-	if not _is_night:
+	if not _is_night and not _in_forest:
 		return
 
 	match _hostile_state:
 		HostileEventState.IDLE:
-			if _is_farm_defended():
+			if not _in_forest and _is_farm_defended():
 				return
 
 			_hostile_trigger_timer = max(_hostile_trigger_timer - delta, 0.0)
-			if _hostile_trigger_timer <= 0.0 and not _is_transitioning and not _hostile_route.is_empty():
+			var active_route := _forest_hostile_route if _in_forest else _hostile_route
+			if _hostile_trigger_timer <= 0.0 and not _is_transitioning and not active_route.is_empty():
 				_begin_hostile_warning()
 		HostileEventState.WARNING:
-			if _is_farm_defended():
+			if not _in_forest and _is_farm_defended():
 				_hostile_state = HostileEventState.COOLDOWN
 				_hostile_state_timer = 4.0
 				_hostile_alert_text = "A criatura ronda, mas nao atravessa a luz."
@@ -989,43 +1063,68 @@ func _update_hostile_event(delta: float) -> void:
 			_hostile_state_timer = max(_hostile_state_timer - delta, 0.0)
 			if _hostile_state_timer <= 0.0:
 				_hostile_state = HostileEventState.IDLE
-				_hostile_trigger_timer = 3.5 if _is_farm_defended() else NIGHT_WARNING_DELAY
-				if _is_farm_defended():
+				if _in_forest:
+					_hostile_trigger_timer = FOREST_DAY_WARNING_DELAY if not _is_night else NIGHT_WARNING_DELAY
+					_hostile_alert_text = ""
+				elif _is_farm_defended():
+					_hostile_trigger_timer = 3.5
 					_hostile_alert_text = "A luz ainda segura a noite."
 				else:
+					_hostile_trigger_timer = NIGHT_WARNING_DELAY
 					_hostile_alert_text = ""
 
 
 func _begin_hostile_warning() -> void:
 	_hostile_state = HostileEventState.WARNING
 	_hostile_state_timer = NIGHT_WARNING_DELAY
-	_hostile_alert_text = "Um berrar ecoa alem da cerca."
+	_hostile_alert_text = "Um farfalhar entre as arvores. Algo espreitando." if _in_forest else "Um berrar ecoa alem da cerca."
+	_warning_plays_remaining = 5
 	if hostile_audio.stream != null:
 		hostile_audio.play()
 
 
+func _on_warning_audio_finished() -> void:
+	if _warning_plays_remaining > 0:
+		_warning_plays_remaining -= 1
+		hostile_audio.play()
+
+
 func _spawn_hostile_enemy() -> void:
+	_warning_plays_remaining = 0
 	hostile_audio.stop()
 	_clear_active_enemy()
 
-	if _hostile_route.is_empty():
+	var spawn_pos := forest_enemy_spawn.global_position if _in_forest else enemy_spawn.global_position
+	var route := _forest_hostile_route if _in_forest else _hostile_route
+	var is_forest_day := _in_forest and not _is_night
+
+	if route.is_empty():
 		_hostile_state = HostileEventState.IDLE
 		return
 
 	_hostile_state = HostileEventState.ACTIVE
-	_hostile_alert_text = "Goatman avancou pela escuridao."
+	_hostile_alert_text = "O Goatman espreita entre as arvores." if _in_forest else "Goatman avancou pela escuridao."
 	_active_enemy = FarmEnemyScene.instantiate() as FarmEnemy
 	add_child(_active_enemy)
 	_active_enemy.start(
-		enemy_spawn.global_position,
-		_hostile_route,
+		spawn_pos,
+		route,
 		player,
 		Callable(self, "_is_enemy_in_player_vision"),
-		Callable(self, "_is_position_in_light")
+		Callable(self, "_is_position_in_light"),
+		110.0 if is_forest_day else FarmEnemy.MOVE_SPEED,
+		140.0 if is_forest_day else FarmEnemy.CHASE_SPEED
 	)
 	_active_enemy.route_finished.connect(_on_enemy_route_finished)
 	_active_enemy.player_caught.connect(_on_enemy_player_caught)
 	_active_enemy.repelled.connect(_on_enemy_repelled)
+	_active_enemy.player_spotted.connect(_on_goatman_player_spotted)
+
+
+func _on_goatman_player_spotted() -> void:
+	if _chase_audio and not _chase_audio.playing:
+		_chase_audio.play()
+	_anxiety_active = true
 
 
 func _on_enemy_route_finished() -> void:
@@ -1049,6 +1148,9 @@ func _on_enemy_player_caught(body: Node) -> void:
 func _start_player_expulsion() -> void:
 	_is_transitioning = true
 	_teleport_cooldown = 0.45
+	_anxiety_active = false
+	_anxiety_current = 0.0
+	player.set_anxiety_intensity(0.0)
 	player.set_movement_locked(true)
 	player.snap_camera_for_room_transition()
 	_update_prompt("")
@@ -1079,6 +1181,9 @@ func _start_player_expulsion() -> void:
 func _start_player_collapse(reason: String) -> void:
 	_is_transitioning = true
 	_teleport_cooldown = 0.45
+	_anxiety_active = false
+	_anxiety_current = 0.0
+	player.set_anxiety_intensity(0.0)
 	player.set_movement_locked(true)
 	player.snap_camera_for_room_transition()
 	_update_prompt("")
@@ -1110,16 +1215,46 @@ func _start_player_collapse(reason: String) -> void:
 
 
 func _stop_hostile_event(start_cooldown: bool) -> void:
+	_warning_plays_remaining = 0
 	hostile_audio.stop()
+	if _chase_audio and _chase_audio.playing:
+		_chase_audio.stop()
 	_clear_active_enemy()
 	_hostile_trigger_timer = 0.0
+	_anxiety_active = false  # fade-out suave via _update_anxiety
 
-	if start_cooldown and _is_night:
+	if start_cooldown and (_is_night or _in_forest):
 		_hostile_state = HostileEventState.COOLDOWN
 		_hostile_state_timer = HOSTILE_COOLDOWN_DURATION
 	else:
 		_hostile_state = HostileEventState.IDLE
 		_hostile_state_timer = 0.0
+
+
+func _update_anxiety(delta: float) -> void:
+	var target_intensity := 0.0
+	if _anxiety_active and _hostile_state == HostileEventState.ACTIVE and is_instance_valid(_active_enemy):
+		var dist := player.global_position.distance_to(_active_enemy.global_position)
+		target_intensity = 1.0 - clamp(
+			(dist - MIN_ANXIETY_DISTANCE) / (MAX_ANXIETY_DISTANCE - MIN_ANXIETY_DISTANCE),
+			0.0, 1.0
+		)
+
+	var speed := ANXIETY_FADE_IN_SPEED if _anxiety_current < target_intensity else ANXIETY_FADE_OUT_SPEED
+	_anxiety_current = move_toward(_anxiety_current, target_intensity, speed * delta)
+
+	if _anxiety_current > 0.001:
+		_anxiety_pulse_time += delta
+		_anxiety_layer.visible = true
+		_anxiety_shader_mat.set_shader_parameter("intensity", _anxiety_current)
+		_anxiety_shader_mat.set_shader_parameter("pulse_time", _anxiety_pulse_time)
+		_tint_rect.color = Color(0.35, 0.03, 0.03, _anxiety_current * 0.18)
+		player.set_anxiety_intensity(_anxiety_current)
+	else:
+		_anxiety_layer.visible = false
+		_anxiety_current = 0.0
+		_anxiety_pulse_time = 0.0
+		player.set_anxiety_intensity(0.0)
 
 
 func _clear_active_enemy() -> void:
@@ -1156,6 +1291,8 @@ func _update_mimic(delta: float) -> void:
 			var gen_pos := _generator_area.global_position
 			if _mimic_node.global_position.distance_to(gen_pos) <= MIMIC_SABOTAGE_RADIUS:
 				_generator_active = false
+				_generator_sabotaged = true
+				_generator_hits = 0
 				_hostile_alert_text = "Os refletores apagaram. O Mimic sabotou o gerador!"
 				_mimic_flee_timer = 4.0
 				_mimic_state = MimicState.FLEEING
@@ -1317,12 +1454,18 @@ func _is_enemy_in_player_vision(enemy_position: Vector2) -> bool:
 
 
 func _is_position_in_light(world_position: Vector2) -> bool:
-	if not _generator_active or _generator_fuel <= 0.0:
-		return false
+	if _generator_active and _generator_fuel > 0.0:
+		for reflector_position in _reflector_positions:
+			if world_position.distance_to(reflector_position) <= REFLECTOR_RADIUS:
+				return true
 
-	for reflector_position in _reflector_positions:
-		if world_position.distance_to(reflector_position) <= REFLECTOR_RADIUS:
-			return true
+	if _flashlight_active:
+		var to_pos := world_position - player.global_position
+		var dist := to_pos.length()
+		if dist <= FLASHLIGHT_RANGE:
+			var facing := player.get_facing_direction()
+			if dist < 1.0 or to_pos.normalized().dot(facing) >= FLASHLIGHT_CONE_DOT:
+				return true
 
 	return false
 
@@ -1472,10 +1615,10 @@ func _get_prompt_for_type(interaction_type: String, plot_index: int = -1) -> Str
 				return "F para comprar %d sementes (%d moedas)" % [VENDOR_SEED_BUNDLE_AMOUNT, VENDOR_SEED_BUNDLE_COST]
 			return "Vendedor: %d sementes custam %d moedas" % [VENDOR_SEED_BUNDLE_AMOUNT, VENDOR_SEED_BUNDLE_COST]
 		"generator":
+			if _generator_sabotaged:
+				return "F para reparar gerador (%d/%d)" % [_generator_hits, TREE_HITS_TO_FALL]
 			var wood_count := _get_item_count(ITEM_WOOD)
 			if _get_selected_item_id() == ITEM_WOOD and wood_count > 0:
-				if _generator_hits > 0:
-					return "F para carregar (%d/%d)" % [_generator_hits, TREE_HITS_TO_FALL]
 				return "F para depositar %d madeiras no gerador" % wood_count
 			if wood_count > 0:
 				return "Equipe a lenha para abastecer o gerador"
@@ -1513,7 +1656,6 @@ func _get_prompt_for_type(interaction_type: String, plot_index: int = -1) -> Str
 			return "F para entrar na cabana"
 		"door_exit":
 			return "F para sair"
-
 	return ""
 
 
@@ -1605,17 +1747,24 @@ func _try_interact() -> void:
 
 
 func _interact_with_generator() -> void:
-	var wood_count := _get_item_count(ITEM_WOOD)
-	if _get_selected_item_id() == ITEM_WOOD and wood_count > 0:
+	# Reparo após sabotagem — 4 pressionamentos de F com custo de stamina, sem madeira
+	if _generator_sabotaged:
 		var stamina_cost := PlayerController.MAX_STAMINA / 8.0
 		if not player.drain_stamina(stamina_cost):
 			return
 		_generator_hits += 1
 		if _generator_hits < TREE_HITS_TO_FALL:
-			_hostile_alert_text = "Carregando gerador... %d/%d" % [_generator_hits, TREE_HITS_TO_FALL]
+			_hostile_alert_text = "Reparando gerador... %d/%d" % [_generator_hits, TREE_HITS_TO_FALL]
 			_generator_alert_timer = 2.0
 			return
 		_generator_hits = 0
+		_generator_sabotaged = false
+		_hostile_alert_text = "Gerador reparado! Pressione F para religar os refletores."
+		_generator_alert_timer = 3.0
+		return
+
+	var wood_count := _get_item_count(ITEM_WOOD)
+	if _get_selected_item_id() == ITEM_WOOD and wood_count > 0:
 		_remove_item(ITEM_WOOD, wood_count)
 		_generator_fuel += GENERATOR_FUEL_PER_WOOD * wood_count
 		_generator_active = true
@@ -1770,14 +1919,19 @@ func _try_use_selected_item() -> void:
 			if _remove_item(ITEM_BUCKET, 1):
 				_thirst = min(_thirst + 18.0, THIRST_MAX)
 				_health = min(_health + 2.0, HEALTH_MAX)
+		ITEM_LANTERN:
+			_flashlight_active = not _flashlight_active
+			player.set_flashlight_on(_flashlight_active)
 
 
 func _refresh_ui() -> void:
 	day_label.text = "Dia %d" % _day_number
-	var phase_remaining := int(ceil((NIGHT_DURATION if _is_night else DAY_DURATION) - _phase_elapsed))
-	phase_label.text = "%s %ds" % [("Noite" if _is_night else "Dia"), max(phase_remaining, 0)]
+	phase_label.text = "%s  %s" % [("Noite" if _is_night else "Dia"), _get_time_string()]
 	coins_label.text = "Moedas: %d" % _coins
-	inventory_label.text = "Equipado: %s | Q usa item | %s" % [_get_selected_slot_label(), _get_seed_stock_text()]
+	var lantern_suffix := ""
+	if _get_selected_item_id() == ITEM_LANTERN:
+		lantern_suffix = "  [%s]" % ("LIGADA" if _flashlight_active else "DESLIGADA")
+	inventory_label.text = "Equipado: %s%s | Q usa item | %s" % [_get_selected_slot_label(), lantern_suffix, _get_seed_stock_text()]
 	_refresh_stamina_ui()
 	_refresh_hotbar_ui()
 	_refresh_player_held_item()
@@ -1816,11 +1970,36 @@ func _refresh_generator_visuals() -> void:
 	if _generator_visual == null or _generator_glow == null:
 		return
 
-	_generator_visual.color = Color(0.45098, 0.435294, 0.317647, 1) if _generator_active else Color(0.364706, 0.380392, 0.396078, 1)
+	if _generator_sprite != null:
+		_generator_sprite.modulate = Color(1.15, 1.05, 0.75) if _generator_active else Color(1, 1, 1)
 	_generator_glow.color = Color(1.0, 0.878431, 0.431373, 0.28) if _generator_active else Color(1.0, 0.878431, 0.431373, 0.0)
 
-	for glow in _reflector_visuals:
-		glow.color = Color(0.980392, 0.901961, 0.596078, 0.22) if _generator_active else Color(0.980392, 0.901961, 0.596078, 0.0)
+	for cone in _reflector_visuals:
+		cone.color = Color(0.980392, 0.901961, 0.596078, 0.38) if _generator_active else Color(0.980392, 0.901961, 0.596078, 0.0)
+
+	if _night_shader_mat != null:
+		_night_shader_mat.set_shader_parameter(&"light_on", 1.0 if (_generator_active and _is_night) else 0.0)
+		_night_shader_mat.set_shader_parameter(&"light_on_2", 1.0 if (_flashlight_active and _is_night) else 0.0)
+
+
+func _update_reflector_light_shader() -> void:
+	if _night_shader_mat == null:
+		return
+	var ct := get_viewport().get_canvas_transform()
+	var vp_size := get_viewport().get_visible_rect().size
+	var p0 := Vector2(-1.0, -1.0)
+	var p1 := Vector2(-1.0, -1.0)
+	var p2 := Vector2(-1.0, -1.0)
+	if _generator_active and _is_night:
+		if _reflector_positions.size() > 0:
+			p0 = ct * _reflector_positions[0] / vp_size
+		if _reflector_positions.size() > 1:
+			p1 = ct * _reflector_positions[1] / vp_size
+	if _flashlight_active and _is_night:
+		p2 = ct * player.global_position / vp_size
+	_night_shader_mat.set_shader_parameter(&"ref_pos_0", p0)
+	_night_shader_mat.set_shader_parameter(&"ref_pos_1", p1)
+	_night_shader_mat.set_shader_parameter(&"ref_pos_2", p2)
 
 
 func _get_seed_stock_text() -> String:
@@ -1868,6 +2047,69 @@ func _on_inside_door_body_entered(body: Node) -> void:
 func _on_inside_door_body_exited(body: Node) -> void:
 	if body == player:
 		_near_inside_door = false
+
+
+func _on_forest_entrance_body_entered(body: Node) -> void:
+	if body == player:
+		_enter_forest()
+
+
+func _enter_forest() -> void:
+	if _is_transitioning:
+		return
+	_is_transitioning = true
+	_teleport_cooldown = 1.5
+	player.set_movement_locked(true)
+	player.snap_camera_for_room_transition()
+	_update_prompt("")
+	var fade_in := create_tween()
+	fade_in.tween_property(fade_rect, "color:a", 1.0, 0.3)
+	fade_in.finished.connect(func() -> void:
+		player.global_position = forest_spawn.global_position
+		var fade_out := create_tween()
+		fade_out.tween_interval(0.15)
+		fade_out.tween_property(fade_rect, "color:a", 0.0, 0.3)
+		fade_out.finished.connect(func() -> void:
+			player.restore_camera_after_room_transition()
+			player.set_movement_locked(false)
+			_stop_hostile_event(false)
+			_in_forest = true
+			_hostile_state = HostileEventState.IDLE
+			_hostile_trigger_timer = FOREST_DAY_WARNING_DELAY if not _is_night else NIGHT_WARNING_DELAY
+			_is_transitioning = false
+		)
+	)
+
+
+func _on_forest_exit_body_entered(body: Node) -> void:
+	if body == player:
+		_exit_forest()
+
+
+func _exit_forest() -> void:
+	if _is_transitioning:
+		return
+	_is_transitioning = true
+	_teleport_cooldown = 1.5
+	player.set_movement_locked(true)
+	player.snap_camera_for_room_transition()
+	var fade_in := create_tween()
+	fade_in.tween_property(fade_rect, "color:a", 1.0, 0.3)
+	fade_in.finished.connect(func() -> void:
+		player.global_position = forest_return.global_position
+		var fade_out := create_tween()
+		fade_out.tween_interval(0.15)
+		fade_out.tween_property(fade_rect, "color:a", 0.0, 0.3)
+		fade_out.finished.connect(func() -> void:
+			player.restore_camera_after_room_transition()
+			player.set_movement_locked(false)
+			_in_forest = false
+			_stop_hostile_event(false)
+			if _is_night:
+				_hostile_trigger_timer = NIGHT_WARNING_DELAY  # janela de graça ao voltar para a fazenda
+			_is_transitioning = false
+		)
+	)
 
 
 func _start_room_transition(target_position: Vector2) -> void:
@@ -2143,6 +2385,8 @@ func _get_item_icon(item_id: String) -> String:
 			return "WD"
 		ITEM_BREAD:
 			return "PO"
+		ITEM_LANTERN:
+			return "LT"
 		_:
 			return "--"
 
@@ -2215,6 +2459,60 @@ func _build_tutorial_ui() -> void:
 	_tutorial_dialogue_panel.add_child(continue_hint)
 
 
+func _create_anxiety_overlay() -> void:
+	_anxiety_layer = CanvasLayer.new()
+	_anxiety_layer.layer = 2  # acima da NightRect (layer 1), abaixo da HUD (layer 10)
+	add_child(_anxiety_layer)
+
+	_tint_rect = ColorRect.new()
+	_tint_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_tint_rect.color = Color(0.35, 0.03, 0.03, 0.0)
+	_tint_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_anxiety_layer.add_child(_tint_rect)
+
+	var shader_code := """
+shader_type canvas_item;
+uniform float intensity : hint_range(0.0, 1.0) = 0.0;
+uniform float pulse_time : hint_range(0.0, 100.0) = 0.0;
+void fragment() {
+    vec2 uv = (UV - vec2(0.5)) * 2.0;
+    uv.x *= 1.777;
+    float dist = length(uv);
+    float pulse = sin(pulse_time * 6.2831) * 0.04 * intensity;
+    float radius = mix(0.92, 0.60, intensity) + pulse;
+    float softness = mix(0.45, 0.16, intensity);
+    float vignette = smoothstep(radius, radius - softness, dist);
+    float darkness = (1.0 - vignette) * mix(0.55, 0.90, intensity);
+    COLOR = vec4(0.0, 0.0, 0.0, darkness * intensity);
+}
+"""
+	var shader := Shader.new()
+	shader.code = shader_code
+	_anxiety_shader_mat = ShaderMaterial.new()
+	_anxiety_shader_mat.shader = shader
+
+	_vignette_rect = ColorRect.new()
+	_vignette_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_vignette_rect.color = Color.WHITE
+	_vignette_rect.material = _anxiety_shader_mat
+	_vignette_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_anxiety_layer.add_child(_vignette_rect)
+
+	_anxiety_layer.visible = false
+
+
+func _make_shadow(width: float, height: float, y_offset: float) -> Polygon2D:
+	var shadow := Polygon2D.new()
+	shadow.color = Color(0, 0, 0, 0.38)
+	shadow.position = Vector2(0.0, y_offset)
+	var pts := PackedVector2Array()
+	for i: int in 12:
+		var angle := i * TAU / 12.0
+		pts.append(Vector2(cos(angle) * width, sin(angle) * height))
+	shadow.polygon = pts
+	return shadow
+
+
 func _create_tutorial_npc() -> void:
 	_tutorial_npc_body = Node2D.new()
 	_tutorial_npc_body.name = "TutorialNPC"
@@ -2234,6 +2532,9 @@ func _create_tutorial_npc() -> void:
 		frames.set_animation_loop(anim_name, true)
 		frames.set_animation_speed(anim_name, 5.0)
 		frames.add_frame(anim_name, load(dir_map[anim_name]))
+
+	var npc_shadow := _make_shadow(7.0, 2.5, 14.0)
+	_tutorial_npc_body.add_child(npc_shadow)
 
 	_tutorial_npc_sprite = AnimatedSprite2D.new()
 	_tutorial_npc_sprite.sprite_frames = frames
@@ -2327,6 +2628,7 @@ func _update_npc_night_run_generator(delta: float) -> void:
 			if _tutorial_night_timer <= 0.0:
 				_tutorial_night_step = 3
 				_tutorial_night_timer = 3.0
+				_warning_plays_remaining = 0
 				hostile_audio.stop()
 				_show_tutorial_dialogue("F- fuja. FUJA!")
 		3:
@@ -2359,6 +2661,7 @@ func _skip_tutorial_npc() -> void:
 	if _tutorial_phase == TutorialPhase.DEAD:
 		return
 	_close_tutorial_dialogue()
+	_warning_plays_remaining = 0
 	hostile_audio.stop()
 	# Garante que o gerador fica ligado (o NPC o ligaria na fase NIGHT_RUN_GENERATOR)
 	if not _generator_active:
@@ -2442,6 +2745,8 @@ func _get_item_color(item_id: String) -> Color:
 			return Color(0.572549, 0.384314, 0.239216, 1)
 		ITEM_BREAD:
 			return Color(0.874510, 0.745098, 0.447059, 1)
+		ITEM_LANTERN:
+			return Color(0.98, 0.92, 0.60, 1) if _flashlight_active else Color(0.55, 0.52, 0.35, 1)
 		_:
 			return Color(0.4, 0.4, 0.4, 1)
 
@@ -2474,6 +2779,9 @@ func _spawn_darkwatcher() -> void:
 		var tex := load(dir_files[anim_name]) as Texture2D
 		if tex != null:
 			frames.add_frame(anim_name, tex)
+
+	var dw_shadow := _make_shadow(7.0, 2.5, 14.0)
+	_darkwatcher_body.add_child(dw_shadow)
 
 	_darkwatcher_sprite = AnimatedSprite2D.new()
 	_darkwatcher_sprite.sprite_frames = frames

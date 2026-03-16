@@ -42,6 +42,36 @@ var _swing_axe_player: AudioStreamPlayer
 var _is_swinging := false
 var _attack_cooldown_frames := 0
 
+# ── Ansiedade (chase sequence) ────────────────────────────────────────────────
+var _anxiety_intensity := 0.0
+var _shake_time := 0.0
+const SHAKE_MAX_OFFSET := 5.0
+const SHAKE_FREQUENCY := 22.0
+const ZOOM_PULSE_MAGNITUDE := 0.04
+const ZOOM_PULSE_FREQUENCY := 1.8
+
+# ── Lanterna ───────────────────────────────────────────────────────────────────
+const _FLASHLIGHT_SHADER := """
+shader_type canvas_item;
+varying float v_y;
+varying float v_x;
+void vertex() {
+	v_y = VERTEX.y;
+	v_x = VERTEX.x;
+}
+void fragment() {
+	float len = 320.0;
+	float t = clamp(v_y / len, 0.0, 1.0);
+	float hw = 80.0 * t;
+	float edge_t = hw > 0.0 ? clamp(abs(v_x) / hw, 0.0, 1.0) : 1.0;
+	float edge_soft = 1.0 - smoothstep(0.6, 1.0, edge_t);
+	float length_fade = 1.0 - pow(t, 1.4);
+	COLOR.a *= length_fade * edge_soft;
+}
+"""
+var _flashlight_cone: Polygon2D = null
+var _flashlight_on := false
+
 
 func _ready() -> void:
 	camera.position_smoothing_speed = CAMERA_SMOOTHING_SPEED
@@ -51,6 +81,7 @@ func _ready() -> void:
 	_setup_axe_animation()
 	_setup_idle_animations()
 	_setup_run_animations()
+	_setup_flashlight_cone()
 	animated_sprite.animation_finished.connect(_on_animation_finished)
 	animated_sprite.frame_changed.connect(_on_frame_changed)
 
@@ -122,8 +153,10 @@ func _physics_process(delta: float) -> void:
 		facing_direction = input_vector
 
 	move_and_slide()
+	_update_camera_anchor(delta)
 	_update_animation_state()
 	_update_footstep(delta, input_vector)
+	_update_flashlight_visual()
 	if _attack_cooldown_frames > 0:
 		_attack_cooldown_frames -= 1
 
@@ -291,8 +324,27 @@ func _enter_exhausted_state() -> void:
 	_regen_cooldown = EXHAUSTED_REGEN_DELAY
 
 
-func _update_camera_anchor() -> void:
-	camera.global_position = global_position.round()
+func set_anxiety_intensity(intensity: float) -> void:
+	_anxiety_intensity = clamp(intensity, 0.0, 1.0)
+
+
+func _update_camera_anchor(delta: float = 0.0) -> void:
+	# Só força global_position nas transições de sala (delta == 0.0)
+	if delta == 0.0:
+		camera.global_position = global_position.round()
+
+	if _anxiety_intensity > 0.0:
+		_shake_time += delta * SHAKE_FREQUENCY
+		var shake_x := sin(_shake_time * 1.0) * SHAKE_MAX_OFFSET * _anxiety_intensity
+		var shake_y := sin(_shake_time * 1.37) * SHAKE_MAX_OFFSET * _anxiety_intensity
+		camera.offset = Vector2(shake_x, shake_y)
+		var base_zoom := lerpf(2.0, 2.45, _anxiety_intensity)
+		var zoom_pulse := sin(_shake_time * (ZOOM_PULSE_FREQUENCY / SHAKE_FREQUENCY) * TAU) * ZOOM_PULSE_MAGNITUDE * _anxiety_intensity
+		camera.zoom = Vector2(base_zoom + zoom_pulse, base_zoom + zoom_pulse)
+	else:
+		_shake_time = 0.0
+		camera.offset = Vector2.ZERO
+		camera.zoom = Vector2(2.0, 2.0)
 
 func set_held_item(item_id: String, short_label: String, color: Color) -> void:
 	held_item_label.text = short_label
@@ -421,3 +473,41 @@ func is_attack_on_cooldown() -> bool:
 func set_survival_modifiers(speed_multiplier: float, stamina_regen_multiplier: float) -> void:
 	_external_speed_multiplier = clamp(speed_multiplier, 0.35, 1.2)
 	_external_stamina_regen_multiplier = clamp(stamina_regen_multiplier, 0.1, 2.0)
+
+
+# ── Lanterna ───────────────────────────────────────────────────────────────────
+
+func _setup_flashlight_cone() -> void:
+	# PLACEHOLDER — o cone usa Polygon2D + shader; substituir sprite do item quando asset disponível
+	var shd := Shader.new()
+	shd.code = _FLASHLIGHT_SHADER
+	var mat := ShaderMaterial.new()
+	mat.shader = shd
+
+	_flashlight_cone = Polygon2D.new()
+	_flashlight_cone.name = "FlashlightCone"
+	# Cone de 180px, estreito na base e mais largo no meio — mesma forma do refletor, em escala menor
+	_flashlight_cone.polygon = PackedVector2Array([
+		Vector2(0, 0), Vector2(-80, 320), Vector2(80, 320),
+	])
+	_flashlight_cone.color = Color(0.98, 0.95, 0.80, 0.50)
+	_flashlight_cone.material = mat
+	_flashlight_cone.z_index = -1
+	_flashlight_cone.visible = false
+	add_child(_flashlight_cone)
+
+
+func _update_flashlight_visual() -> void:
+	if _flashlight_cone == null:
+		return
+	_flashlight_cone.visible = _flashlight_on
+	if _flashlight_on:
+		_flashlight_cone.rotation = facing_direction.angle() - PI / 2.0
+
+
+func set_flashlight_on(on: bool) -> void:
+	_flashlight_on = on
+
+
+func is_flashlight_on() -> bool:
+	return _flashlight_on
