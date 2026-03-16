@@ -291,6 +291,7 @@ var _mimic_flee_timer := 0.0
 var _wendigo_state := WendigoState.INACTIVE
 var _wendigo_state_timer := 0.0
 var _wendigo_node: Node2D = null
+var _wendigo_sprite: AnimatedSprite2D = null
 var _wendigo_appearances_tonight := 0
 var _wendigo_max_tonight := 0
 var _wendigo_cooldown_timer := 0.0
@@ -1397,6 +1398,16 @@ func _update_wendigo(delta: float) -> void:
 			var dir := (player.global_position - wpos).normalized()
 			_wendigo_node.global_position += dir * WENDIGO_CHARGE_SPEED * delta
 
+			# Atualiza direção da animação conforme o movimento
+			if is_instance_valid(_wendigo_sprite):
+				var anim: StringName
+				if absf(dir.x) >= absf(dir.y):
+					anim = &"run_east" if dir.x >= 0.0 else &"run_west"
+				else:
+					anim = &"run_south" if dir.y >= 0.0 else &"run_north"
+				if _wendigo_sprite.animation != anim:
+					_wendigo_sprite.play(anim)
+
 
 func _begin_wendigo_warning() -> void:
 	_wendigo_state = WendigoState.WARNING
@@ -1415,14 +1426,63 @@ func _spawn_wendigo() -> void:
 	var offset_dir := (player.global_position - Vector2(420, 520)).normalized()
 	_wendigo_node.global_position = player.global_position - offset_dir * 420.0
 
-	# PLACEHOLDER — substituir por AnimatedSprite2D quando asset disponível
-	var body := Polygon2D.new()
-	body.color = Color(0.72, 0.72, 0.78, 0.88)
-	body.polygon = PackedVector2Array([
-		Vector2(-7, -13), Vector2(7, -13),
-		Vector2(9, 11), Vector2(-9, 11),
-	])
-	_wendigo_node.add_child(body)
+	var wframes := SpriteFrames.new()
+	wframes.remove_animation(&"default")
+	var wdir_frames: Dictionary = {
+		&"run_south": [
+			"res://assets/Characters/Wendigo/animations/running-8-frames/south/frame_000.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/south/frame_001.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/south/frame_002.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/south/frame_003.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/south/frame_004.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/south/frame_005.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/south/frame_006.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/south/frame_007.png",
+		],
+		&"run_north": [
+			"res://assets/Characters/Wendigo/animations/running-8-frames/north/frame_000.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/north/frame_001.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/north/frame_002.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/north/frame_003.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/north/frame_004.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/north/frame_005.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/north/frame_006.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/north/frame_007.png",
+		],
+		&"run_east": [
+			"res://assets/Characters/Wendigo/animations/running-8-frames/east/frame_000.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/east/frame_001.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/east/frame_002.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/east/frame_003.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/east/frame_004.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/east/frame_005.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/east/frame_006.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/east/frame_007.png",
+		],
+		&"run_west": [
+			"res://assets/Characters/Wendigo/animations/running-8-frames/west/frame_000.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/west/frame_001.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/west/frame_002.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/west/frame_003.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/west/frame_004.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/west/frame_005.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/west/frame_006.png",
+			"res://assets/Characters/Wendigo/animations/running-8-frames/west/frame_007.png",
+		],
+	}
+	for anim_name: StringName in wdir_frames:
+		wframes.add_animation(anim_name)
+		wframes.set_animation_loop(anim_name, true)
+		wframes.set_animation_speed(anim_name, 10.0)
+		for path: String in wdir_frames[anim_name]:
+			var tex := load(path) as Texture2D
+			if tex != null:
+				wframes.add_frame(anim_name, tex)
+
+	_wendigo_sprite = AnimatedSprite2D.new()
+	_wendigo_sprite.sprite_frames = wframes
+	_wendigo_sprite.play(&"run_south")
+	_wendigo_node.add_child(_wendigo_sprite)
 	add_child(_wendigo_node)
 
 
@@ -1437,6 +1497,7 @@ func _clear_wendigo() -> void:
 	if is_instance_valid(_wendigo_node):
 		_wendigo_node.queue_free()
 	_wendigo_node = null
+	_wendigo_sprite = null
 
 
 func _is_enemy_in_player_vision(enemy_position: Vector2) -> bool:
