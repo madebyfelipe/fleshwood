@@ -5,9 +5,14 @@ signal route_finished
 signal player_caught(body: Node)
 signal repelled
 
-const MOVE_SPEED := 132.0
-const CHASE_SPEED := 186.0
+const MOVE_SPEED    := 132.0
+const CHASE_SPEED   := 186.0
 const RETREAT_SPEED := 260.0
+
+# Cores que indicam o estado visual do Goatman
+const COLOR_PATROL := Color(0.18, 0.12, 0.08, 1)
+const COLOR_CHASE  := Color(0.55, 0.08, 0.06, 1)
+const COLOR_REPEL  := Color(0.12, 0.12, 0.35, 1)
 
 var _route_points: Array[Vector2] = []
 var _route_index := 0
@@ -19,8 +24,8 @@ var _has_spotted_player := false
 var _is_repelled := false
 var _retreat_target := Vector2.ZERO
 
+@onready var body: Polygon2D = $Body
 
-@onready var sprite: AnimatedSprite2D = $Body
 
 func _ready() -> void:
 	body_entered.connect(_on_body_entered)
@@ -51,7 +56,7 @@ func _process(delta: float) -> void:
 		_is_repelled = true
 
 	if _is_repelled:
-		_update_animation_state("fall")
+		body.color = COLOR_REPEL
 		global_position = global_position.move_toward(_retreat_target, RETREAT_SPEED * delta)
 		if global_position.distance_to(_retreat_target) <= 6.0:
 			_is_active = false
@@ -63,12 +68,12 @@ func _process(delta: float) -> void:
 		_has_spotted_player = true
 
 	if _has_spotted_player and is_instance_valid(_player):
-		_update_animation_state("run")
+		body.color = COLOR_CHASE
 		global_position = global_position.move_toward(_player.global_position, CHASE_SPEED * delta)
 		return
 
 	var target := _route_points[_route_index]
-	_update_animation_state("idle")
+	body.color = COLOR_PATROL
 	global_position = global_position.move_toward(target, MOVE_SPEED * delta)
 
 	if global_position.distance_to(target) > 2.0:
@@ -82,12 +87,6 @@ func _process(delta: float) -> void:
 		route_finished.emit()
 
 
-func _on_body_entered(body: Node) -> void:
+func _on_body_entered(body_node: Node) -> void:
 	if _is_active:
-		player_caught.emit(body)
-
-
-func _update_animation_state(animation_name: String) -> void:
-	if sprite.animation != animation_name:
-		sprite.animation = animation_name
-		sprite.play()
+		player_caught.emit(body_node)

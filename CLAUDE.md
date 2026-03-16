@@ -1,6 +1,8 @@
 # Fleshwoods — CLAUDE.md
 
-Survival horror top-down 2D em **Godot 4.6**. Todos os visuais são `Polygon2D` programáticos — nenhum spritesheet ou imagem externa. Idioma do projeto: **português brasileiro** (UI, comentários, notas de progresso).
+Survival horror top-down 2D em **Godot 4.6**. Visuais em **pixelart** (AnimatedSprite2D com spritesheets). Idioma do projeto: **português brasileiro** (UI, comentários, notas de progresso).
+
+> **Nota de transição (2026-03-14):** Pivotado de Polygon2D programáticos para pixelart. Player usa robot asset como placeholder enquanto art final é desenvolvida.
 
 O jogo foi iniciado pelo OpenAI Codex e está sendo continuado aqui. O design completo está documentado abaixo.
 
@@ -30,11 +32,29 @@ progress.md        → log de sessões e TODOs em português
 ## Convenções obrigatórias
 
 - **GDScript** — sem C#. Tipagem estática sempre que possível.
-- **Visuais = Polygon2D** — não criar TextureRect, Sprite2D ou qualquer node que dependa de arquivo de imagem.
+- **Visuais = Pixelart (AnimatedSprite2D/SpriteFrames)** — usar spritesheets quando asset disponível.
 - **Velocidades e distâncias com valores inteiros** (mesmo sendo `float`) para compatibilidade com pixel snap.
 - **Input registrado em runtime** via `_ensure_input_actions()` em `player.gd` — não adicionar ações no editor.
 - **Português BR** em toda UI, comentários e `progress.md`.
 - **Não criar arquivos `.uid` manualmente** — Godot os gera automaticamente.
+
+## Processo de assets (obrigatório)
+
+Mecânicas têm prioridade sobre artwork. Para evitar acoplamento visual quebrado:
+
+1. **Antes de qualquer implementação visual → perguntar ao usuário qual asset usar**
+2. **Asset disponível** → usar `AnimatedSprite2D` + `SpriteFrames` com o path confirmado
+3. **Asset não disponível** → usar `Polygon2D` como placeholder, marcado com `# PLACEHOLDER`
+4. **Nunca assumir** path, dimensões de frame ou número de frames — sempre confirmar com o usuário
+
+### Padrão de placeholder
+```gdscript
+# PLACEHOLDER — substituir por AnimatedSprite2D quando asset disponível
+var body := Polygon2D.new()
+body.color = Color(0.4, 0.4, 0.4, 1)
+body.polygon = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+add_child(body)
+```
 
 ## Configurações do projeto (project.godot)
 
@@ -180,7 +200,8 @@ Cheat de debug: segurar `A + R + Q` pula a fase atual.
 ## Status de implementação
 
 ### Implementado
-- Goatman (noturno, foge da luz)
+- **Player com pixelart** (AnimatedSprite2D, 4 direções de walk, robot asset placeholder)
+- Goatman (noturno, foge da luz) — ainda em Polygon2D
 - Ciclo dia/noite com overlay
 - Farming (18 plots, 6 estágios, água obrigatória)
 - Vendedor (sementes por moedas, colheita por moedas)

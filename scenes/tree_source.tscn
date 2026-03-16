@@ -1,31 +1,34 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dpmmiao84f1ct"]
+
+[ext_resource type="Texture2D" uid="uid://ccvdfkilkk4wc" path="res://assets/Environments/Top-Down-Forest/PNG/top-down-forest-tileset.png" id="1"]
+
+[sub_resource type="AtlasTexture" id="2"]
+atlas = ExtResource("1")
+region = Rect2(160, 48, 48, 48)
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_tree_body"]
-radius = 18.0
-height = 48.0
+radius = 19.0
+height = 46.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_tree_interact"]
-radius = 34.0
+radius = 26.0
 
-[node name="TreeSource" type="Node2D"]
+[node name="TreeSource" type="Node2D" unique_id=2117807811]
 
-[node name="Visual" type="Polygon2D" parent="."]
-color = Color(0.231373, 0.458824, 0.227451, 1)
-polygon = PackedVector2Array(-30, 8, -40, -12, -24, -34, 0, -46, 24, -34, 40, -12, 30, 8)
+[node name="Visual" type="Sprite2D" parent="." unique_id=886115287]
+position = Vector2(0, -8)
+texture = SubResource("2")
 
-[node name="Trunk" type="Polygon2D" parent="."]
-position = Vector2(0, 20)
-color = Color(0.447059, 0.286275, 0.152941, 1)
-polygon = PackedVector2Array(-8, -12, 8, -12, 10, 18, -10, 18)
+[node name="Body" type="StaticBody2D" parent="." unique_id=1002485329]
+position = Vector2(-5, 6)
 
-[node name="Body" type="StaticBody2D" parent="."]
-position = Vector2(0, 18)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Body"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Body" unique_id=1310636920]
+position = Vector2(6, -13)
 shape = SubResource("CapsuleShape2D_tree_body")
 
-[node name="InteractArea" type="Area2D" parent="."]
-position = Vector2(0, 6)
+[node name="InteractArea" type="Area2D" parent="." unique_id=2080243129]
+position = Vector2(-32, 23)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractArea"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractArea" unique_id=1060005967]
+position = Vector2(33, -29)
 shape = SubResource("CircleShape2D_tree_interact")

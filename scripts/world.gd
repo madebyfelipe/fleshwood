@@ -2,6 +2,15 @@ extends Node2D
 
 const FarmEnemyScene = preload("res://scenes/farm_enemy.tscn")
 
+var TEX_HOTBAR_SELECTED: Texture2D = null
+var TEX_HOTBAR_NOT_SELECTED: Texture2D = null
+var TEX_BAR_FRAME: Texture2D = null
+var TEX_BAR_TILE: Texture2D = null
+var TEX_ICON_BUCKET: Texture2D = null
+var TEX_ICON_AXE: Texture2D = null
+var TEX_ICON_SEEDS: Texture2D = null
+var TEX_ICON_BREAD: Texture2D = null
+
 const INTERACT_DISTANCE := 56.0
 const DAY_DURATION := 180.0
 const NIGHT_DURATION := 135.0
@@ -74,6 +83,13 @@ enum TutorialPhase {
 	DEAD,
 }
 
+enum DarkwatcherPhase {
+	INACTIVE,
+	AWAIT_APPROACH,
+	IN_DIALOGUE,
+	DONE,
+}
+
 const TUTORIAL_NPC_SPEED := 70.0
 const TUTORIAL_NPC_NAME := "Caim"
 const TUTORIAL_LINES := [
@@ -85,6 +101,15 @@ const TUTORIAL_LINES := [
 	"A noite traz o Goatman. Corte lenha e deposite no gerador. Trinta madeiras duram a noite.",
 	"Os refletores o afastam. Sem luz, voce e presa. Cuide da fome e da sede.",
 	"E tudo que sei. Sobreviva.",
+]
+
+const DARKWATCHER_NAME := "Observador"
+const DARKWATCHER_LINES := [
+	"Voce sobreviveu a primeira noite. Poucas almas conseguem isso.",
+	"O homem que vivia aqui... o fazendeiro. Ele durou tres noites. Na quarta, o Goatman o encontrou fora dos refletores.",
+	"Nao vou fingir ser o que nao sou. Nao sou humano. Sou algo anterior a esta terra, anterior a esses campos e a essa floresta.",
+	"Mas tenho interesse em que voce viva. Ha algo nesta floresta que eu preciso — e so maos vivas podem encontra-lo.",
+	"Por enquanto: plante, colha, sobreviva. Mantenha os refletores acesos a noite. Eu voltarei quando for necessario.",
 ]
 
 @onready var world_visuals: Node2D = $WorldVisuals
@@ -127,9 +152,12 @@ const TUTORIAL_LINES := [
 ]
 @onready var fade_rect: ColorRect = $TransitionLayer/FadeRect
 @onready var hostile_audio: AudioStreamPlayer = $HostileAudio
+@onready var tilemap_ground: TileMapLayer = $TileMapGround
 
 var _teleport_cooldown := 0.0
 var _is_transitioning := false
+var _near_outside_door := false
+var _near_inside_door := false
 var _plots: Array[Dictionary] = []
 var _active_interaction: Dictionary = {}
 var _coins := 12
@@ -151,6 +179,11 @@ var _hunger := HUNGER_MAX
 var _thirst := THIRST_MAX
 var _health := HEALTH_MAX
 var _status_labels: Dictionary = {}
+var _hunger_bar_fill: ColorRect = null
+var _thirst_bar_fill: ColorRect = null
+var _health_bar_fill: ColorRect = null
+var _stamina_bar_clip: Control = null
+var _stamina_bar_tile: TextureRect = null
 var _generator_area: Area2D = null
 var _generator_visual: Polygon2D = null
 var _generator_glow: Polygon2D = null
@@ -169,8 +202,7 @@ var _stove_timer := 0.0
 var _stove_bread_ready := false
 var _tutorial_phase := TutorialPhase.AWAIT_APPROACH
 var _tutorial_npc_body: Node2D = null
-var _tutorial_npc_visual_head: Polygon2D = null
-var _tutorial_npc_visual_body: Polygon2D = null
+var _tutorial_npc_sprite: AnimatedSprite2D = null
 var _tutorial_npc_area: Area2D = null
 var _tutorial_dialogue_index := 0
 var _tutorial_night_timer := 0.0
@@ -180,18 +212,42 @@ var _tutorial_dialogue_panel: Panel = null
 var _tutorial_dialogue_name_label: Label = null
 var _tutorial_dialogue_text_label: Label = null
 
+var _darkwatcher_phase := DarkwatcherPhase.INACTIVE
+var _darkwatcher_body: Node2D = null
+var _darkwatcher_sprite: AnimatedSprite2D = null
+var _darkwatcher_area: Area2D = null
+var _darkwatcher_dialogue_index := 0
+
+# ── Inventário ────────────────────────────────────────────────────────────────
+var _inventory_data: InventoryData = null
+var _inventory_ui:   InventoryUI   = null
+var _item_icon_map:  Dictionary    = {}
+
+
+func _load_ui_textures() -> void:
+	TEX_HOTBAR_SELECTED     = load("res://assets/interface/hotbar_selected.png") as Texture2D
+	TEX_HOTBAR_NOT_SELECTED = load("res://assets/interface/hotbar_not_selected.png") as Texture2D
+	TEX_BAR_FRAME           = load("res://assets/interface/progress.png") as Texture2D
+	TEX_BAR_TILE            = load("res://assets/interface/bar.png") as Texture2D
+	TEX_ICON_BUCKET         = load("res://assets/interface/icons/Milk_Bucket_JE2_BE2.png") as Texture2D
+	TEX_ICON_AXE            = load("res://assets/interface/icons/Diamond_Axe_JE3_BE3.png") as Texture2D
+	TEX_ICON_SEEDS          = load("res://assets/interface/icons/Wheat_JE2_BE2.png") as Texture2D
+	TEX_ICON_BREAD          = load("res://assets/interface/icons/Bread_JE3_BE3.webp") as Texture2D
+
 
 func _ready() -> void:
 	randomize()
+	_load_ui_textures()
 	_ensure_input_actions()
 	_configure_overlay()
 	_setup_hotbar()
+	_setup_inventory()
 	_cache_farm_plots()
 	_cache_enemy_route()
 	_create_runtime_farm_nodes()
 	_cache_tree_sources()
 	_setup_interaction_highlights()
-	_build_stamina_segments()
+	_build_stamina_bar()
 	_build_survival_ui()
 	_build_tutorial_ui()
 	player.global_position = outside_spawn.global_position
@@ -199,7 +255,9 @@ func _ready() -> void:
 	_refresh_ui()
 
 	outside_door.body_entered.connect(_on_outside_door_body_entered)
+	outside_door.body_exited.connect(_on_outside_door_body_exited)
 	inside_door.body_entered.connect(_on_inside_door_body_entered)
+	inside_door.body_exited.connect(_on_inside_door_body_exited)
 
 
 func _process(delta: float) -> void:
@@ -208,6 +266,7 @@ func _process(delta: float) -> void:
 	_update_day_cycle(delta)
 	_update_plot_growth(delta)
 	_update_tutorial_npc(delta)
+	_update_darkwatcher_npc(delta)
 	_update_stove(delta)
 	_update_wood_sources(delta)
 	_update_generator(delta)
@@ -219,6 +278,15 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Toggle do inventário tem prioridade e bloqueia ações de jogo enquanto aberto
+	if event.is_action_pressed("inventory"):
+		_toggle_inventory()
+		get_viewport().set_input_as_handled()
+		return
+
+	if _inventory_ui != null and _inventory_ui.visible:
+		return  # bloqueia ações de jogo enquanto inventário está aberto
+
 	if event.is_action_pressed("interact"):
 		_try_interact()
 	elif event.is_action_pressed("use_item"):
@@ -244,6 +312,14 @@ func _ensure_input_actions() -> void:
 		event.physical_keycode = KEY_Q
 		InputMap.action_add_event("use_item", event)
 
+	if not InputMap.has_action("inventory"):
+		InputMap.add_action("inventory")
+
+	if not _action_has_key("inventory", KEY_E):
+		var ev := InputEventKey.new()
+		ev.physical_keycode = KEY_E
+		InputMap.action_add_event("inventory", ev)
+
 
 func _action_has_key(action_name: String, keycode: int) -> bool:
 	for event in InputMap.action_get_events(action_name):
@@ -261,27 +337,97 @@ func _configure_overlay() -> void:
 	stamina_backdrop.color = Color(0.12549, 0.219608, 0.305882, 1)
 
 
-func _build_stamina_segments() -> void:
+func _build_stamina_bar() -> void:
 	for child in stamina_segments.get_children():
 		child.queue_free()
+	stamina_segments.visible = false
+	stamina_fill.visible = false
 
-	var segment_count := 10
-	var gap := 2.0
-	var total_width := 150.0
-	var segment_width := (total_width - gap * float(segment_count - 1)) / float(segment_count)
+	var stamina_panel: Node = stamina_fill.get_parent()
 
-	for index in range(segment_count):
-		var segment := ColorRect.new()
-		segment.name = "Segment%d" % index
-		segment.position = Vector2(index * (segment_width + gap), 0)
-		segment.size = Vector2(segment_width, 16)
-		segment.color = Color(0.537255, 0.886275, 0.988235, 1)
-		stamina_segments.add_child(segment)
+	# Clip container — largura muda conforme ratio; clip_contents esconde o excesso
+	var clip := Control.new()
+	clip.position = Vector2(13, 11)
+	clip.size = Vector2(150, 20)
+	clip.clip_contents = true
+	stamina_panel.add_child(clip)
+	_stamina_bar_clip = clip
+
+	# Tile da barra (bar.png), sempre 150px de largura; o clip faz o recorte
+	if TEX_BAR_TILE != null:
+		var tile := TextureRect.new()
+		tile.texture = TEX_BAR_TILE
+		tile.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tile.stretch_mode = TextureRect.STRETCH_TILE
+		tile.size = Vector2(150, 20)
+		clip.add_child(tile)
+		_stamina_bar_tile = tile
+
+	# Frame por cima (draw_center=false → só a borda visível)
+	if TEX_BAR_FRAME != null:
+		var frame := NinePatchRect.new()
+		frame.texture = TEX_BAR_FRAME
+		frame.position = Vector2(10, 8)
+		frame.size = Vector2(156, 24)
+		frame.patch_margin_left = 8
+		frame.patch_margin_right = 8
+		frame.patch_margin_top = 8
+		frame.patch_margin_bottom = 8
+		frame.draw_center = false
+		stamina_panel.add_child(frame)
 
 
 func _build_survival_ui() -> void:
-	_create_status_label("survival", Vector2(24, 176), 18)
-	_create_status_label("generator", Vector2(24, 206), 17)
+	_create_status_label("generator", Vector2(24, 176), 15)
+
+	var bar_configs := [
+		{"key": "hunger",  "label": "FOME", "color": Color(0.85, 0.55, 0.1, 1)},
+		{"key": "thirst",  "label": "SEDE", "color": Color(0.25, 0.55, 0.9, 1)},
+	]
+
+	for i in range(bar_configs.size()):
+		var cfg: Dictionary = bar_configs[i]
+		var y := 606.0 + i * 32.0
+
+		var lbl := Label.new()
+		lbl.position = Vector2(16, y)
+		lbl.size = Vector2(42, 26)
+		lbl.add_theme_font_size_override("font_size", 11)
+		lbl.text = cfg["label"]
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		transition_layer.add_child(lbl)
+
+		var container := Control.new()
+		container.position = Vector2(62, y)
+		container.size = Vector2(140, 26)
+		transition_layer.add_child(container)
+
+		var bg := ColorRect.new()
+		bg.position = Vector2(6, 6)
+		bg.size = Vector2(128, 14)
+		bg.color = Color(0.08, 0.08, 0.08, 0.9)
+		container.add_child(bg)
+
+		var fill := ColorRect.new()
+		fill.position = Vector2(6, 6)
+		fill.size = Vector2(128, 14)
+		fill.color = cfg["color"]
+		container.add_child(fill)
+
+		var frame := NinePatchRect.new()
+		frame.texture = TEX_BAR_FRAME
+		frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		frame.patch_margin_left = 6
+		frame.patch_margin_right = 6
+		frame.patch_margin_top = 6
+		frame.patch_margin_bottom = 6
+		frame.draw_center = false
+		container.add_child(frame)
+
+		match cfg["key"]:
+			"hunger": _hunger_bar_fill = fill
+			"thirst": _thirst_bar_fill = fill
 
 
 func _create_status_label(label_id: String, label_position: Vector2, font_size: int) -> void:
@@ -350,6 +496,7 @@ func _cache_farm_plots() -> void:
 		_update_plot_visual(plot_data)
 
 
+
 func _create_runtime_farm_nodes() -> void:
 	_create_generator()
 	_create_reflectors()
@@ -416,7 +563,8 @@ func _cache_tree_sources() -> void:
 			continue
 
 		var interact_area := tree_root.get_node_or_null("InteractArea") as Area2D
-		var visual := tree_root.get_node_or_null("Visual") as Polygon2D
+		var visual := tree_root.get_node_or_null("Visual") as Sprite2D
+		var body := tree_root.get_node_or_null("Body") as StaticBody2D
 		if interact_area == null or visual == null:
 			continue
 
@@ -424,6 +572,7 @@ func _cache_tree_sources() -> void:
 			"node": tree_root,
 			"area": interact_area,
 			"visual": visual,
+			"body": body,
 			"available": true,
 			"respawn_timer": 0.0,
 		})
@@ -496,8 +645,7 @@ func _setup_interaction_highlights() -> void:
 	_register_polygon_highlight(_stove_visual)
 	for plot in _plots:
 		_register_polygon_highlight(plot["soil"])
-	for source in _wood_sources:
-		_register_polygon_highlight(source["visual"])
+	# árvores usam Sprite2D — não registram highlight de polígono
 
 
 func _register_polygon_highlight(polygon_node: Polygon2D) -> void:
@@ -549,6 +697,8 @@ func _advance_day_phase() -> void:
 		_stop_hostile_event(false)
 		_generator_active = false
 		_hostile_alert_text = ""
+		if _day_number == 2 and _darkwatcher_phase == DarkwatcherPhase.INACTIVE:
+			_spawn_darkwatcher()
 	else:
 		_is_night = true
 		_schedule_next_hostile_event()
@@ -624,8 +774,12 @@ func _update_wood_sources(delta: float) -> void:
 			continue
 
 		source["available"] = true
-		var visual := source["visual"] as Polygon2D
-		visual.color = Color(0.266667, 0.482353, 0.247059, 1)
+		var visual := source["visual"] as Sprite2D
+		visual.visible = true
+		var body := source["body"] as StaticBody2D
+		if body != null:
+			body.collision_layer = 1
+			body.collision_mask = 1
 
 
 func _update_generator(delta: float) -> void:
@@ -928,6 +1082,12 @@ func _update_active_interaction() -> void:
 		_update_interaction_highlights()
 		return
 
+	if _darkwatcher_phase == DarkwatcherPhase.IN_DIALOGUE:
+		_active_interaction = {"type": "darkwatcher", "distance": 0.0, "plot_index": -1}
+		_update_prompt("F para continuar")
+		_update_interaction_highlights()
+		return
+
 	var best_interaction: Dictionary = {}
 	var best_distance := INF
 
@@ -935,6 +1095,12 @@ func _update_active_interaction() -> void:
 		var npc_interaction := _consider_interaction(best_interaction, best_distance, "tutorial_npc", _tutorial_npc_area.global_position)
 		if not npc_interaction.is_empty():
 			best_interaction = npc_interaction
+			best_distance = best_interaction["distance"]
+
+	if _darkwatcher_area != null and _darkwatcher_phase in [DarkwatcherPhase.AWAIT_APPROACH, DarkwatcherPhase.DONE]:
+		var dw_interaction := _consider_interaction(best_interaction, best_distance, "darkwatcher", _darkwatcher_area.global_position)
+		if not dw_interaction.is_empty():
+			best_interaction = dw_interaction
 			best_distance = best_interaction["distance"]
 
 	best_interaction = _consider_interaction(best_interaction, best_distance, "seed_bag", seed_bag.global_position)
@@ -967,8 +1133,8 @@ func _update_active_interaction() -> void:
 		best_distance = best_interaction["distance"]
 
 	for wood_index in range(_wood_sources.size()):
-		var wood_area := _wood_sources[wood_index]["area"] as Area2D
-		var wood_interaction := _consider_interaction(best_interaction, best_distance, "wood_source", wood_area.global_position, wood_index)
+		var wood_node := _wood_sources[wood_index]["node"] as Node2D
+		var wood_interaction := _consider_interaction(best_interaction, best_distance, "wood_source", wood_node.global_position, wood_index)
 		if not wood_interaction.is_empty():
 			best_interaction = wood_interaction
 			best_distance = best_interaction["distance"]
@@ -979,6 +1145,17 @@ func _update_active_interaction() -> void:
 		if not plot_interaction.is_empty():
 			best_interaction = plot_interaction
 			best_distance = best_interaction["distance"]
+
+	if _near_outside_door:
+		var door_interaction := _consider_interaction(best_interaction, best_distance, "door_enter", outside_door.global_position)
+		if not door_interaction.is_empty():
+			best_interaction = door_interaction
+			best_distance = door_interaction["distance"]
+
+	if _near_inside_door:
+		var door_exit_interaction := _consider_interaction(best_interaction, best_distance, "door_exit", inside_door.global_position)
+		if not door_exit_interaction.is_empty():
+			best_interaction = door_exit_interaction
 
 	_active_interaction = best_interaction
 	_update_prompt(_get_prompt_for_interaction(_active_interaction))
@@ -1023,6 +1200,8 @@ func _get_prompt_for_type(interaction_type: String, plot_index: int = -1) -> Str
 			return "F para beber agua"
 		"tutorial_npc":
 			return "F para falar com %s" % TUTORIAL_NPC_NAME
+		"darkwatcher":
+			return "F para falar com o %s" % DARKWATCHER_NAME
 		"sell_box":
 			var crop_count := _get_item_count(ITEM_CROP)
 			if crop_count > 0:
@@ -1067,6 +1246,10 @@ func _get_prompt_for_type(interaction_type: String, plot_index: int = -1) -> Str
 				return "Equipe o balde para regar"
 			if plot_state == PLOT_MATURE:
 				return "F para colher"
+		"door_enter":
+			return "F para entrar na cabana"
+		"door_exit":
+			return "F para sair"
 
 	return ""
 
@@ -1087,8 +1270,7 @@ func _update_interaction_highlights() -> void:
 
 	match _active_interaction["type"]:
 		"tutorial_npc":
-			if is_instance_valid(_tutorial_npc_visual_body):
-				_show_highlight(_tutorial_npc_visual_body)
+			pass  # AnimatedSprite2D — sem highlight de polígono
 		"seed_bag":
 			_show_highlight(seed_bag_visual)
 		"well":
@@ -1101,9 +1283,10 @@ func _update_interaction_highlights() -> void:
 			_show_highlight(_generator_visual)
 		"stove":
 			_show_highlight(_stove_visual)
+		"darkwatcher":
+			pass # AnimatedSprite2D — sem highlight de polígono
 		"wood_source":
-			var source_index: int = _active_interaction["plot_index"]
-			_show_highlight(_wood_sources[source_index]["visual"])
+			pass # Sprite2D não usa highlight de polígono
 		"plot":
 			var plot_index: int = _active_interaction["plot_index"]
 			_show_highlight(_plots[plot_index]["soil"])
@@ -1122,6 +1305,8 @@ func _try_interact() -> void:
 	match _active_interaction["type"]:
 		"tutorial_npc":
 			_interact_with_tutorial_npc()
+		"darkwatcher":
+			_interact_with_darkwatcher()
 		"seed_bag":
 			if _free_seed_claim_available:
 				if _add_item(ITEM_SEEDS, "Sementes", INITIAL_SEED_AMOUNT):
@@ -1147,6 +1332,10 @@ func _try_interact() -> void:
 			_harvest_wood_source(_active_interaction["plot_index"])
 		"plot":
 			_interact_with_plot(_active_interaction["plot_index"])
+		"door_enter":
+			_start_room_transition(inside_spawn.global_position)
+		"door_exit":
+			_start_room_transition(outside_spawn.global_position)
 
 	_update_active_interaction()
 	_refresh_ui()
@@ -1192,7 +1381,7 @@ func _interact_with_stove() -> void:
 
 
 func _show_inventory_full_alert() -> void:
-	_hostile_alert_text = "Inventario cheio. Libere espaco antes de pegar o pao."
+	_hostile_alert_text = "Inventario cheio! Abra [E] e libere espaco."
 
 
 func _harvest_wood_source(source_index: int) -> void:
@@ -1206,8 +1395,12 @@ func _harvest_wood_source(source_index: int) -> void:
 
 	source["available"] = false
 	source["respawn_timer"] = TREE_RESPAWN_DURATION
-	var visual := source["visual"] as Polygon2D
-	visual.color = Color(0.27451, 0.27451, 0.27451, 1)
+	var visual := source["visual"] as Sprite2D
+	visual.visible = false
+	var body := source["body"] as StaticBody2D
+	if body != null:
+		body.collision_layer = 0
+		body.collision_mask = 0
 
 
 func _interact_with_plot(plot_index: int) -> void:
@@ -1308,15 +1501,12 @@ func _refresh_hostile_ui() -> void:
 
 
 func _refresh_survival_ui() -> void:
-	var survival_label := _status_labels.get("survival", null) as Label
-	if survival_label != null:
-		survival_label.text = "FOME %d  |  SEDE %d  |  VIDA %d" % [int(round(_hunger)), int(round(_thirst)), int(round(_health))]
-		if _health < 30.0 or _thirst < 25.0:
-			survival_label.modulate = Color(1.0, 0.596078, 0.596078, 1)
-		elif _hunger < 40.0:
-			survival_label.modulate = Color(0.984314, 0.85098, 0.564706, 1)
-		else:
-			survival_label.modulate = Color.WHITE
+	if _hunger_bar_fill != null:
+		_hunger_bar_fill.size.x = clampf(_hunger / HUNGER_MAX, 0.0, 1.0) * 128.0
+		_hunger_bar_fill.modulate = Color(1.0, 0.596078, 0.596078, 1) if _hunger < 40.0 else Color.WHITE
+	if _thirst_bar_fill != null:
+		_thirst_bar_fill.size.x = clampf(_thirst / THIRST_MAX, 0.0, 1.0) * 128.0
+		_thirst_bar_fill.modulate = Color(1.0, 0.596078, 0.596078, 1) if _thirst < 25.0 else Color.WHITE
 
 	var generator_label := _status_labels.get("generator", null) as Label
 	if generator_label != null:
@@ -1350,39 +1540,43 @@ func _get_seed_stock_text() -> String:
 
 func _refresh_stamina_ui() -> void:
 	var ratio := player.get_stamina_ratio()
-	var segment_count := 10
-	var filled_segments := int(ceil(ratio * segment_count))
-	var segment_color := Color(0.537255, 0.886275, 0.988235, 1)
+	var stamina_color := Color(0.537255, 0.886275, 0.988235, 1)
 	if player.is_exhausted():
-		segment_color = Color(0.901961, 0.478431, 0.478431, 1)
+		stamina_color = Color(0.901961, 0.478431, 0.478431, 1)
 		stamina_status.text = "CD"
 	elif player.is_sprinting():
-		segment_color = Color(0.988235, 0.760784, 0.352941, 1)
+		stamina_color = Color(0.988235, 0.760784, 0.352941, 1)
 		stamina_status.text = "RUN"
 	elif player.is_stamina_on_cooldown():
-		segment_color = Color(0.682353, 0.866667, 0.941176, 1)
+		stamina_color = Color(0.682353, 0.866667, 0.941176, 1)
 		stamina_status.text = "REC"
 	else:
 		stamina_status.text = "STA"
 
-	for index in range(segment_count):
-		var segment := stamina_segments.get_node("Segment%d" % index) as ColorRect
-		segment.visible = index < filled_segments
-		segment.color = segment_color
+	if _stamina_bar_clip != null:
+		_stamina_bar_clip.size.x = clampf(ratio, 0.0, 1.0) * 150.0
+	if _stamina_bar_tile != null:
+		_stamina_bar_tile.modulate = stamina_color
 
 
 func _on_outside_door_body_entered(body: Node) -> void:
-	if body != player or _teleport_cooldown > 0.0 or _is_transitioning:
-		return
+	if body == player:
+		_near_outside_door = true
 
-	_start_room_transition(inside_spawn.global_position)
+
+func _on_outside_door_body_exited(body: Node) -> void:
+	if body == player:
+		_near_outside_door = false
 
 
 func _on_inside_door_body_entered(body: Node) -> void:
-	if body != player or _teleport_cooldown > 0.0 or _is_transitioning:
-		return
+	if body == player:
+		_near_inside_door = true
 
-	_start_room_transition(outside_spawn.global_position)
+
+func _on_inside_door_body_exited(body: Node) -> void:
+	if body == player:
+		_near_inside_door = false
 
 
 func _start_room_transition(target_position: Vector2) -> void:
@@ -1418,6 +1612,89 @@ func _setup_hotbar() -> void:
 		{"id": "", "label": "Vazio", "count": 0},
 		{"id": "", "label": "Vazio", "count": 0},
 	]
+	_build_hotbar_visuals()
+
+
+func _setup_inventory() -> void:
+	_item_icon_map = {
+		ITEM_BUCKET: TEX_ICON_BUCKET,
+		ITEM_AXE:    TEX_ICON_AXE,
+		ITEM_SEEDS:  TEX_ICON_SEEDS,
+		ITEM_CROP:   TEX_ICON_SEEDS,
+		ITEM_BREAD:  TEX_ICON_BREAD,
+	}
+	_inventory_data = InventoryData.new()
+	_inventory_ui   = InventoryUI.new(_inventory_data, _item_icon_map)
+	add_child(_inventory_ui)
+	# Passa referência direta ao _hotbar para edição em tempo real
+	_inventory_ui.set_hotbar(_hotbar)
+	_inventory_ui.closed.connect(_on_inventory_closed)
+
+
+func _toggle_inventory() -> void:
+	if _inventory_ui.visible:
+		_inventory_ui.cancel_drag()
+		_inventory_ui.hide()
+		player.set_movement_locked(false)
+	else:
+		_inventory_ui.open(_inventory_data, _selected_hotbar_index)
+		player.set_movement_locked(true)
+
+
+func _on_inventory_closed() -> void:
+	player.set_movement_locked(false)
+
+
+func _build_hotbar_visuals() -> void:
+	if hotbar_slots.size() > 0:
+		var hotbar_panel := hotbar_slots[0].get_parent() as Panel
+		if hotbar_panel != null:
+			hotbar_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+
+	const SLOT_SIZE := 56
+	const SLOT_GAP := 8
+	var hotbar_panel := hotbar_slots[0].get_parent() as Control
+	var panel_height: float = hotbar_panel.size.y if hotbar_panel != null else 64.0
+	var panel_width: float = hotbar_panel.size.x if hotbar_panel != null else 516.0
+	var total_w: float = hotbar_slots.size() * SLOT_SIZE + (hotbar_slots.size() - 1) * SLOT_GAP
+	var start_x: float = (panel_width - total_w) / 2.0
+
+	for index in range(hotbar_slots.size()):
+		var slot_panel: Panel = hotbar_slots[index]
+
+		slot_panel.size = Vector2(SLOT_SIZE, SLOT_SIZE)
+		slot_panel.position = Vector2(start_x + index * (SLOT_SIZE + SLOT_GAP), (panel_height - SLOT_SIZE) / 2.0)
+
+		var icon_label: Label = slot_panel.get_node("Icon")
+		icon_label.visible = false
+
+		slot_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+
+		var slot_bg := TextureRect.new()
+		slot_bg.name = "SlotBg"
+		slot_bg.texture = TEX_HOTBAR_NOT_SELECTED
+		slot_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		slot_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		slot_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		slot_panel.add_child(slot_bg)
+		slot_panel.move_child(slot_bg, 0)
+
+		var item_icon := TextureRect.new()
+		item_icon.name = "ItemIcon"
+		item_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		item_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		item_icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		item_icon.offset_left = 6
+		item_icon.offset_top = 6
+		item_icon.offset_right = -6
+		item_icon.offset_bottom = -6
+		slot_panel.add_child(item_icon)
+		slot_panel.move_child(item_icon, 1)
+
+		var count_label: Label = slot_panel.get_node("Count")
+		count_label.position = Vector2(28, 38)
+		count_label.size = Vector2(24, 14)
+		slot_panel.move_child(count_label, slot_panel.get_child_count() - 1)
 
 
 func _try_hotbar_selection(keycode: int) -> void:
@@ -1440,40 +1717,62 @@ func _find_slot_index(item_id: String) -> int:
 
 
 func _has_item(item_id: String) -> bool:
-	return _find_slot_index(item_id) >= 0
+	if _find_slot_index(item_id) >= 0:
+		return true
+	return _inventory_data != null and _inventory_data.get_item_count(item_id) > 0
 
 
 func _get_item_count(item_id: String) -> int:
 	var slot_index := _find_slot_index(item_id)
-	if slot_index < 0:
-		return 0
-	return int(_hotbar[slot_index]["count"])
+	var hotbar_count := int(_hotbar[slot_index]["count"]) if slot_index >= 0 else 0
+	var inv_count    := _inventory_data.get_item_count(item_id) if _inventory_data != null else 0
+	return hotbar_count + inv_count
 
 
 func _add_item(item_id: String, label: String, amount: int) -> bool:
+	# Tenta empilhar na hotbar primeiro
 	var slot_index := _find_slot_index(item_id)
 	if slot_index >= 0:
 		_hotbar[slot_index]["count"] = int(_hotbar[slot_index]["count"]) + amount
 		return true
 
+	# Ocupa slot vazio na hotbar
 	for index in range(_hotbar.size()):
 		if _hotbar[index]["id"] == "":
 			_hotbar[index] = {"id": item_id, "label": label, "count": amount}
 			return true
 
+	# Hotbar cheia — transborda para o inventário
+	if _inventory_data != null:
+		var leftover := _inventory_data.add_item(item_id, label, amount)
+		return leftover == 0
+
 	return false
 
 
 func _remove_item(item_id: String, amount: int) -> bool:
-	var slot_index := _find_slot_index(item_id)
-	if slot_index < 0 or int(_hotbar[slot_index]["count"]) < amount:
+	if _get_item_count(item_id) < amount:
 		return false
 
-	_hotbar[slot_index]["count"] = int(_hotbar[slot_index]["count"]) - amount
-	if int(_hotbar[slot_index]["count"]) <= 0 and item_id != ITEM_BUCKET and item_id != ITEM_AXE:
-		_hotbar[slot_index] = {"id": "", "label": "Vazio", "count": 0}
-	elif item_id == ITEM_BUCKET and int(_hotbar[slot_index]["count"]) <= 0:
-		_hotbar[slot_index]["count"] = 0
+	var remaining := amount
+
+	# Remove da hotbar primeiro
+	var slot_index := _find_slot_index(item_id)
+	if slot_index >= 0:
+		var hotbar_count := int(_hotbar[slot_index]["count"])
+		var take := mini(remaining, hotbar_count)
+		_hotbar[slot_index]["count"] = hotbar_count - take
+		remaining -= take
+		var new_count := int(_hotbar[slot_index]["count"])
+		if new_count <= 0 and item_id != ITEM_BUCKET and item_id != ITEM_AXE:
+			_hotbar[slot_index] = {"id": "", "label": "Vazio", "count": 0}
+		elif item_id == ITEM_BUCKET and new_count <= 0:
+			_hotbar[slot_index]["count"] = 0
+
+	# Remove o restante do inventário
+	if remaining > 0 and _inventory_data != null:
+		_inventory_data.remove_item(item_id, remaining)
+
 	return true
 
 
@@ -1491,23 +1790,18 @@ func _get_selected_item_id() -> String:
 func _refresh_hotbar_ui() -> void:
 	for index in range(min(_hotbar.size(), hotbar_slots.size())):
 		var slot_panel: Panel = hotbar_slots[index]
-		var icon_label: Label = slot_panel.get_node("Icon")
+		var slot_bg: TextureRect = slot_panel.get_node_or_null("SlotBg")
+		var item_icon: TextureRect = slot_panel.get_node_or_null("ItemIcon")
 		var count_label: Label = slot_panel.get_node("Count")
 		var slot: Dictionary = _hotbar[index]
 		var is_selected := index == _selected_hotbar_index
 
-		icon_label.text = _get_item_icon(str(slot["id"]))
-		count_label.text = _get_slot_count_text(slot)
+		if slot_bg != null:
+			slot_bg.texture = TEX_HOTBAR_SELECTED if is_selected else TEX_HOTBAR_NOT_SELECTED
+		if item_icon != null:
+			item_icon.texture = _get_item_icon_texture(str(slot["id"]))
 
-		var style := StyleBoxFlat.new()
-		style.bg_color = Color(0.12, 0.12, 0.12, 0.9)
-		style.set_corner_radius_all(6)
-		style.border_width_left = 3 if is_selected else 1
-		style.border_width_top = 3 if is_selected else 1
-		style.border_width_right = 3 if is_selected else 1
-		style.border_width_bottom = 3 if is_selected else 1
-		style.border_color = Color.WHITE if is_selected else Color(0.35, 0.35, 0.35, 1)
-		slot_panel.add_theme_stylebox_override("panel", style)
+		count_label.text = _get_slot_count_text(slot)
 
 
 func _get_item_icon(item_id: String) -> String:
@@ -1526,6 +1820,20 @@ func _get_item_icon(item_id: String) -> String:
 			return "PO"
 		_:
 			return "--"
+
+
+func _get_item_icon_texture(item_id: String) -> Texture2D:
+	match item_id:
+		ITEM_BUCKET:
+			return TEX_ICON_BUCKET
+		ITEM_AXE:
+			return TEX_ICON_AXE
+		ITEM_SEEDS, ITEM_CROP:
+			return TEX_ICON_SEEDS
+		ITEM_BREAD:
+			return TEX_ICON_BREAD
+		_:
+			return null
 
 
 func _get_slot_count_text(slot: Dictionary) -> String:
@@ -1588,21 +1896,25 @@ func _create_tutorial_npc() -> void:
 	_tutorial_npc_body.position = outside_spawn.global_position + Vector2(80, -36)
 	add_child(_tutorial_npc_body)
 
-	_tutorial_npc_visual_body = Polygon2D.new()
-	_tutorial_npc_visual_body.color = Color(0.52, 0.40, 0.30, 1)
-	_tutorial_npc_visual_body.polygon = PackedVector2Array([
-		Vector2(-6, -2), Vector2(6, -2),
-		Vector2(7, 14), Vector2(-7, 14),
-	])
-	_tutorial_npc_body.add_child(_tutorial_npc_visual_body)
+	var frames := SpriteFrames.new()
+	frames.remove_animation(&"default")
+	var dir_map: Dictionary = {
+		&"idle_south": "res://assets/Characters/old man consequences/rotations/south.png",
+		&"idle_north": "res://assets/Characters/old man consequences/rotations/north.png",
+		&"idle_east":  "res://assets/Characters/old man consequences/rotations/east.png",
+		&"idle_west":  "res://assets/Characters/old man consequences/rotations/west.png",
+	}
+	for anim_name: StringName in dir_map:
+		frames.add_animation(anim_name)
+		frames.set_animation_loop(anim_name, true)
+		frames.set_animation_speed(anim_name, 5.0)
+		frames.add_frame(anim_name, load(dir_map[anim_name]))
 
-	_tutorial_npc_visual_head = Polygon2D.new()
-	_tutorial_npc_visual_head.color = Color(0.82, 0.68, 0.54, 1)
-	_tutorial_npc_visual_head.polygon = PackedVector2Array([
-		Vector2(-5, -15), Vector2(5, -15),
-		Vector2(6, -3), Vector2(-6, -3),
-	])
-	_tutorial_npc_body.add_child(_tutorial_npc_visual_head)
+	_tutorial_npc_sprite = AnimatedSprite2D.new()
+	_tutorial_npc_sprite.sprite_frames = frames
+	_tutorial_npc_sprite.animation = &"idle_south"
+	_tutorial_npc_sprite.scale = Vector2(1, 1)
+	_tutorial_npc_body.add_child(_tutorial_npc_sprite)
 
 	_tutorial_npc_area = Area2D.new()
 	var col := CollisionShape2D.new()
@@ -1612,7 +1924,6 @@ func _create_tutorial_npc() -> void:
 	_tutorial_npc_area.add_child(col)
 	_tutorial_npc_body.add_child(_tutorial_npc_area)
 
-	_register_polygon_highlight(_tutorial_npc_visual_body)
 
 
 func _update_tutorial_npc(delta: float) -> void:
@@ -1705,8 +2016,8 @@ func _update_npc_night_run_generator(delta: float) -> void:
 func _update_npc_dying(delta: float) -> void:
 	_tutorial_night_timer = maxf(_tutorial_night_timer - delta, 0.0)
 	var alpha := _tutorial_night_timer / 2.0
-	_tutorial_npc_visual_body.color = Color(0.65, 0.08, 0.08, alpha)
-	_tutorial_npc_visual_head.color = Color(0.82, 0.68, 0.54, alpha)
+	if is_instance_valid(_tutorial_npc_sprite):
+		_tutorial_npc_sprite.modulate = Color(1.0, 0.12, 0.12, alpha)
 
 	if _tutorial_night_timer <= 0.0:
 		_tutorial_phase = TutorialPhase.DEAD
@@ -1743,8 +2054,12 @@ func _interact_with_tutorial_npc() -> void:
 
 
 func _show_tutorial_dialogue(text: String) -> void:
+	_show_npc_dialogue(TUTORIAL_NPC_NAME, text)
+
+
+func _show_npc_dialogue(speaker_name: String, text: String) -> void:
 	_tutorial_dialogue_panel.visible = true
-	_tutorial_dialogue_name_label.text = TUTORIAL_NPC_NAME
+	_tutorial_dialogue_name_label.text = speaker_name
 	_tutorial_dialogue_text_label.text = text
 
 
@@ -1783,3 +2098,113 @@ func _get_item_color(item_id: String) -> Color:
 			return Color(0.874510, 0.745098, 0.447059, 1)
 		_:
 			return Color(0.4, 0.4, 0.4, 1)
+
+
+# ── Darkwatcher ──────────────────────────────────────────────────────────────
+
+func _spawn_darkwatcher() -> void:
+	_darkwatcher_body = Node2D.new()
+	_darkwatcher_body.name = "Darkwatcher"
+	_darkwatcher_body.position = outside_spawn.global_position + Vector2(-100, -48)
+	add_child(_darkwatcher_body)
+
+	var frames := SpriteFrames.new()
+	frames.remove_animation("default")
+
+	var dir_files: Dictionary = {
+		"south":      "res://assets/Characters/darkwatcher/rotations/south.png",
+		"south-east": "res://assets/Characters/darkwatcher/rotations/south-east.png",
+		"east":       "res://assets/Characters/darkwatcher/rotations/east.png",
+		"north-east": "res://assets/Characters/darkwatcher/rotations/north-east.png",
+		"north":      "res://assets/Characters/darkwatcher/rotations/north.png",
+		"north-west": "res://assets/Characters/darkwatcher/rotations/north-west.png",
+		"west":       "res://assets/Characters/darkwatcher/rotations/west.png",
+		"south-west": "res://assets/Characters/darkwatcher/rotations/south-west.png",
+	}
+
+	for anim_name: String in dir_files.keys():
+		frames.add_animation(anim_name)
+		frames.set_animation_loop(anim_name, false)
+		var tex := load(dir_files[anim_name]) as Texture2D
+		if tex != null:
+			frames.add_frame(anim_name, tex)
+
+	_darkwatcher_sprite = AnimatedSprite2D.new()
+	_darkwatcher_sprite.sprite_frames = frames
+	_darkwatcher_sprite.play("south")
+	_darkwatcher_body.add_child(_darkwatcher_sprite)
+
+	_darkwatcher_area = Area2D.new()
+	var col := CollisionShape2D.new()
+	var shape := CircleShape2D.new()
+	shape.radius = 44.0
+	col.shape = shape
+	_darkwatcher_area.add_child(col)
+	_darkwatcher_body.add_child(_darkwatcher_area)
+
+	_darkwatcher_phase = DarkwatcherPhase.AWAIT_APPROACH
+
+
+func _update_darkwatcher_npc(_delta: float) -> void:
+	if _darkwatcher_phase == DarkwatcherPhase.INACTIVE:
+		return
+	if not is_instance_valid(_darkwatcher_body):
+		return
+
+	_update_darkwatcher_facing()
+
+	if _darkwatcher_phase == DarkwatcherPhase.AWAIT_APPROACH:
+		if player.global_position.distance_to(_darkwatcher_body.global_position) < 72.0:
+			_begin_darkwatcher_dialogue()
+
+
+func _update_darkwatcher_facing() -> void:
+	if not is_instance_valid(_darkwatcher_sprite):
+		return
+	var dir := _darkwatcher_body.global_position.direction_to(player.global_position)
+	_darkwatcher_sprite.play(_dir8_from_angle(atan2(dir.y, dir.x)))
+
+
+func _dir8_from_angle(angle_rad: float) -> String:
+	var deg := fmod(rad_to_deg(angle_rad) + 360.0, 360.0)
+	if deg < 22.5 or deg >= 337.5:
+		return "east"
+	elif deg < 67.5:
+		return "south-east"
+	elif deg < 112.5:
+		return "south"
+	elif deg < 157.5:
+		return "south-west"
+	elif deg < 202.5:
+		return "west"
+	elif deg < 247.5:
+		return "north-west"
+	elif deg < 292.5:
+		return "north"
+	else:
+		return "north-east"
+
+
+func _begin_darkwatcher_dialogue() -> void:
+	_darkwatcher_phase = DarkwatcherPhase.IN_DIALOGUE
+	_darkwatcher_dialogue_index = 0
+	_show_npc_dialogue(DARKWATCHER_NAME, DARKWATCHER_LINES[0])
+	var hint := _tutorial_dialogue_panel.get_node_or_null("ContinueHint") as Label
+	if hint != null:
+		hint.visible = true
+
+
+func _advance_darkwatcher_dialogue() -> void:
+	_darkwatcher_dialogue_index += 1
+	if _darkwatcher_dialogue_index >= DARKWATCHER_LINES.size():
+		_darkwatcher_phase = DarkwatcherPhase.DONE
+		_close_tutorial_dialogue()
+		return
+	_show_npc_dialogue(DARKWATCHER_NAME, DARKWATCHER_LINES[_darkwatcher_dialogue_index])
+
+
+func _interact_with_darkwatcher() -> void:
+	if _darkwatcher_phase == DarkwatcherPhase.IN_DIALOGUE:
+		_advance_darkwatcher_dialogue()
+	elif _darkwatcher_phase == DarkwatcherPhase.DONE:
+		_begin_darkwatcher_dialogue()

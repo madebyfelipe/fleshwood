@@ -44,15 +44,15 @@ var texture = asset_manager.load_texture("player_blond_kid")
 **Lógica em `player.gd`:**
 ```gdscript
 func _update_animation(input_vector: Vector2) -> void:
-    if is_moving:
-        if movement_state == MovementState.SPRINTING:
-            sprite.animation = "run"
-        elif movement_state == MovementState.EXHAUSTED:
-            sprite.animation = "exhausted"
-        else:
-            sprite.animation = "walk"
-    else:
-        sprite.animation = "idle"
+	if is_moving:
+		if movement_state == MovementState.SPRINTING:
+			sprite.animation = "run"
+		elif movement_state == MovementState.EXHAUSTED:
+			sprite.animation = "exhausted"
+		else:
+			sprite.animation = "walk"
+	else:
+		sprite.animation = "idle"
 ```
 
 **Preservado:**
@@ -78,11 +78,11 @@ func _update_animation(input_vector: Vector2) -> void:
 **State Machine:**
 ```gdscript
 if _is_repelled:
-    _update_animation_state("fall")
+	_update_animation_state("fall")
 elif _has_spotted_player:
-    _update_animation_state("run")
+	_update_animation_state("run")
 else:
-    _update_animation_state("idle")
+	_update_animation_state("idle")
 ```
 
 **Preservado:**

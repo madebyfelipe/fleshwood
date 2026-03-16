@@ -23,7 +23,7 @@ const EXHAUSTED_REGEN_DELAY := 2.4
 const EXHAUSTED_EXIT_STAMINA_RATIO := 0.35
 const CAMERA_SMOOTHING_SPEED := 14.0
 @onready var camera: Camera2D = $Camera2D
-@onready var sprite: AnimatedSprite2D = $Body
+@onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var held_item_visual: Polygon2D = $HeldItemVisual
 @onready var held_item_label: Label = $HeldItemLabel
 
@@ -35,6 +35,7 @@ var _stamina := MAX_STAMINA
 var _regen_cooldown := 0.0
 var _external_speed_multiplier := 1.0
 var _external_stamina_regen_multiplier := 1.0
+var _animation_speed_multiplier := 1.0
 
 
 func _ready() -> void:
@@ -52,8 +53,8 @@ func _physics_process(delta: float) -> void:
 	if input_vector != Vector2.ZERO:
 		facing_direction = input_vector
 
-	_update_animation(input_vector)
 	move_and_slide()
+	_update_animation_state()
 
 
 func _ensure_input_actions() -> void:
@@ -219,25 +220,6 @@ func _enter_exhausted_state() -> void:
 	_regen_cooldown = EXHAUSTED_REGEN_DELAY
 
 
-func _update_animation(input_vector: Vector2) -> void:
-	var is_moving := input_vector != Vector2.ZERO
-
-	if is_moving:
-		if movement_state == MovementState.SPRINTING:
-			sprite.animation = "run"
-		elif movement_state == MovementState.EXHAUSTED:
-			sprite.animation = "exhausted"
-		else:
-			sprite.animation = "walk"
-
-		if not sprite.is_playing():
-			sprite.play()
-	else:
-		sprite.animation = "idle"
-		if not sprite.is_playing():
-			sprite.play()
-
-
 func _update_camera_anchor() -> void:
 	camera.global_position = global_position.round()
 
@@ -266,6 +248,50 @@ func is_sprinting() -> bool:
 
 func is_exhausted() -> bool:
 	return movement_state == MovementState.EXHAUSTED
+
+
+func _update_animation_state() -> void:
+	var velocity_magnitude = velocity.length()
+
+	if velocity_magnitude > 1.0:
+		_update_sprite_direction()
+		animated_sprite.play()
+	else:
+		animated_sprite.pause()
+
+	# Adjust animation speed based on movement state
+	match movement_state:
+		MovementState.SPRINTING:
+			_animation_speed_multiplier = 1.5
+		MovementState.EXHAUSTED:
+			_animation_speed_multiplier = 0.5
+		_:
+			_animation_speed_multiplier = 1.0
+
+	animated_sprite.speed_scale = _animation_speed_multiplier
+
+
+func _update_sprite_direction() -> void:
+	var angle_deg := rad_to_deg(facing_direction.angle())
+	# Normaliza para [-180, 180]
+	# Godot angle(): DIREITA=0°, BAIXO=90°, ESQUERDA=±180°, CIMA=-90°
+	if angle_deg >= -22.5 and angle_deg < 22.5:
+		animated_sprite.animation = &"walk_east"
+	elif angle_deg >= 22.5 and angle_deg < 67.5:
+		animated_sprite.animation = &"walk_south_east"
+	elif angle_deg >= 67.5 and angle_deg < 112.5:
+		animated_sprite.animation = &"walk_south"
+	elif angle_deg >= 112.5 and angle_deg < 157.5:
+		animated_sprite.animation = &"walk_south_west"
+	elif angle_deg >= 157.5 or angle_deg < -157.5:
+		animated_sprite.animation = &"walk_west"
+	elif angle_deg >= -157.5 and angle_deg < -112.5:
+		animated_sprite.animation = &"walk_north_west"
+	elif angle_deg >= -112.5 and angle_deg < -67.5:
+		animated_sprite.animation = &"walk_north"
+	else:  # [-67.5, -22.5)
+		animated_sprite.animation = &"walk_north_east"
+	animated_sprite.flip_h = false
 
 
 func set_survival_modifiers(speed_multiplier: float, stamina_regen_multiplier: float) -> void:
