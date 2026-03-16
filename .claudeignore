@@ -1,0 +1,46 @@
+# GODOT CACHE
+.godot/
+.import/
+.export/
+
+# IMPORTED ASSETS
+*.import
+
+# BUILD FILES
+*.exe
+*.apk
+*.pck
+*.zip
+
+# ASSETS (não precisam ser lidos pela IA)
+*.png
+*.jpg
+*.jpeg
+*.tga
+*.svg
+*.gif
+*.webp
+
+*.wav
+*.mp3
+*.ogg
+
+*.glb
+*.gltf
+*.fbx
+*.blend
+
+# VCS
+.git/
+.gitignore
+
+# NODE
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TEMP
+.cache/
+.tmp/

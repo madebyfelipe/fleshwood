@@ -1,0 +1,27 @@
+# Pastas do Godot
+.godot/
+user://
+export/
+
+# Arquivos de compilação
+*.o
+*.so
+*.dylib
+*.dll
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
+.directory
+
+# Arquivos temporários
+*.tmp
+*.bak
+*.swp
