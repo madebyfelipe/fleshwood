@@ -1,0 +1,75 @@
+[gd_scene format=3 uid="uid://ga12rjgpvdf0"]
+
+[ext_resource type="Script" uid="uid://b6yojqugrxikm" path="res://scripts/main_menu.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://7x40qw3c70h4" path="res://assets/Misc/main menu background.png" id="2"]
+[ext_resource type="Texture2D" uid="uid://dx1pnscm4vm5j" path="res://assets/Misc/logo.png" id="3"]
+[ext_resource type="AudioStream" path="res://assets/sfx/main menu.wav" id="4"]
+
+[node name="MainMenu" type="Control" unique_id=851798874]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Background" type="TextureRect" parent="." unique_id=1469782992]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2")
+stretch_mode = 6
+
+[node name="Logo" type="TextureRect" parent="." unique_id=50836850]
+layout_mode = 0
+offset_left = 390.99997
+offset_top = 139.0
+offset_right = 1799.0
+offset_bottom = 907.0
+scale = Vector2(0.3600003, 0.3600003)
+texture = ExtResource("3")
+stretch_mode = 5
+
+[node name="MenuContainer" type="VBoxContainer" parent="." unique_id=887324617]
+modulate = Color(1, 1, 1, 0)
+layout_mode = 0
+offset_left = 409.0
+offset_top = 484.0
+offset_right = 879.0
+offset_bottom = 620.0
+
+[node name="NewGame" type="Button" parent="MenuContainer" unique_id=1476944254]
+layout_mode = 2
+text = "New Game"
+
+[node name="LoadGame" type="Button" parent="MenuContainer" unique_id=1008897503]
+layout_mode = 2
+text = "Load Game"
+
+[node name="Options" type="Button" parent="MenuContainer" unique_id=1911720046]
+layout_mode = 2
+text = "Options"
+
+[node name="Exit" type="Button" parent="MenuContainer" unique_id=245479995]
+layout_mode = 2
+text = "Exit"
+
+[node name="Music" type="AudioStreamPlayer" parent="." unique_id=741852963]
+stream = ExtResource("4")
+volume_db = -80.0
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=312847561]
+
+[node name="Polygon2D" type="Polygon2D" parent="." unique_id=226213531]
+z_index = -2
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(-205, -85, 1721, -60, 1538, 1136, -296, 1098)
+
+[connection signal="pressed" from="MenuContainer/NewGame" to="." method="_on_new_game_pressed"]
+[connection signal="pressed" from="MenuContainer/LoadGame" to="." method="_on_load_game_pressed"]
+[connection signal="pressed" from="MenuContainer/Options" to="." method="_on_options_pressed"]
+[connection signal="pressed" from="MenuContainer/Exit" to="." method="_on_exit_pressed"]

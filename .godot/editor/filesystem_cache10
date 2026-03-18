@@ -1,5 +1,5 @@
 63f7b34db8d8cdea90c76aacccf841ec
-::res://::1773768816
+::res://::1773796126
 CLAUDE.md::TextFile::-1::1773768816::0::1::::<><><>0<>0<><>::
 export_presets.cfg::TextFile::-1::1773767904::0::1::::<><><>0<>0<><>::
 node_2d.tscn::PackedScene::2342196187790996278::1773454277::0::1::::<><><>0<>0<><>::
@@ -4191,7 +4191,7 @@ player-stand.png::CompressedTexture2D::8005872508589681393::1773454517::17734545
 ::res://assets/Packs/warped-Caves/PSD/sprites/enemies/::1773454517
 ::res://assets/Packs/warped-Caves/PSD/sprites/FX/::1773454517
 ::res://assets/Packs/warped-Caves/PSD/sprites/player/::1773454517
-::res://assets/sfx/::1773771798
+::res://assets/sfx/::1773784770
 chase sequence.wav::AudioStreamWAV::477465747211124304::1773636777::1773636780::1::::<><><>0<>0<>b0ac45c25c47cf097e1c18dc2df3841f<>res://.godot/imported/chase sequence.wav-16371a150b0a583d1b5f380bff80ec83.sample::
 coyote_time_notice.wav::AudioStreamWAV::5574698030237720593::1756675171::1773784770::1::::<><><>0<>0<>1423de661b43bc8f072bb2747e902a50<>res://.godot/imported/coyote_time_notice.wav-c0975dcc0ba45803d1d7c1c978957aaa.sample::
 Crickets.mp3::AudioStreamMP3::7906242638783183780::1773454517::1773454517::1::::<><><>0<>0<>25cdc37f2728a0e43f69ac94fa267ffa<>res://.godot/imported/Crickets.mp3-1828673b256c98a4a13764d23a38b9c8.mp3str::

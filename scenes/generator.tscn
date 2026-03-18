@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[ext_resource type="Texture2D" path="res://assets/Misc/generator.png" id="1_tex"]
+
+[sub_resource type="RectangleShape2D" id="RectShape_col"]
+size = Vector2(54, 42)
+
+[node name="Generator" type="Area2D"]
+
+[node name="Sprite" type="Sprite2D" parent="."]
+texture = ExtResource("1_tex")
+scale = Vector2(0.5, 0.5)
+
+[node name="Visual" type="Polygon2D" parent="."]
+color = Color(0, 0, 0, 0)
+polygon = PackedVector2Array(-22, -16, 22, -16, 24, 14, -24, 14)
+
+[node name="Glow" type="Polygon2D" parent="."]
+z_index = -1
+color = Color(1, 0.878431, 0.431373, 0)
+polygon = PackedVector2Array(-26, -20, 26, -20, 28, 18, -28, 18)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectShape_col")
