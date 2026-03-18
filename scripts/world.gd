@@ -11,10 +11,11 @@ var TEX_ICON_BUCKET: Texture2D = null
 var TEX_ICON_AXE: Texture2D = null
 var TEX_ICON_SEEDS: Texture2D = null
 var TEX_ICON_BREAD: Texture2D = null
+var TEX_ICON_FLASHLIGHT: Texture2D = null
 
 const INTERACT_DISTANCE := 56.0
-const DAY_DURATION := 180.0
-const NIGHT_DURATION := 135.0
+const DAY_DURATION := 600.0
+const NIGHT_DURATION := 300.0
 const DAWN_HOUR := 7   # 07:00 — amanhecer
 const DUSK_HOUR := 19  # 19:00 — anoitecer
 const SELL_PRICE := 12
@@ -34,7 +35,9 @@ const GENERATOR_FUEL_PER_WOOD := NIGHT_DURATION / float(GENERATOR_WOOD_PER_NIGHT
 const GENERATOR_FUEL_DRAIN_PER_SECOND := 1.0
 const NIGHT_WARNING_DELAY := 5.0
 const HOSTILE_COOLDOWN_DURATION := 5.0
-const FOREST_DAY_WARNING_DELAY := 35.0
+const FOREST_DAY_WARNING_DELAY    := 35.0  # tempo de espera (IDLE) antes do aviso começar (dia)
+const FOREST_NIGHT_WARNING_DURATION := 3.0  # duração da fase de aviso antes do spawn (noite)
+const FOREST_DAY_WARNING_DURATION   := 12.0 # duração da fase de aviso antes do spawn (dia)
 const PLAYER_EXPULSION_OFFSET := Vector2(0, 72)
 const PLAYER_COLLAPSE_COIN_PENALTY := 10
 const PLAYER_VISION_RANGE := 280.0
@@ -42,6 +45,7 @@ const PLAYER_VISION_DOT_THRESHOLD := 0.45
 const REFLECTOR_RADIUS := 212.0
 const FLASHLIGHT_RANGE := 320.0
 const FLASHLIGHT_CONE_DOT := 0.82  # cos(35°) — cone total de ~70°
+const LANTERN_BATTERY_MAX := NIGHT_DURATION / 4.0  # ~33.75s = 1/4 da duração da noite
 
 # — Mimic (sabotageia o gerador)
 const MIMIC_SPEED := 55.0
@@ -52,11 +56,13 @@ const MIMIC_MIN_TRIGGER := 30.0       # quando pode aparecer na noite (segundos)
 const MIMIC_MAX_TRIGGER := 80.0
 
 # — Wendigo (anunciado, carrega o player; escala por noite)
-const WENDIGO_WARNING_DURATION := 14.0  # janela para o player se proteger
-const WENDIGO_CHARGE_SPEED := 255.0
-const WENDIGO_CHARGE_DURATION := 7.0    # desiste após esse tempo
-const WENDIGO_COOLDOWN_MIN := 38.0
-const WENDIGO_COOLDOWN_MAX := 65.0
+const WENDIGO_PATROL_DURATION     := 60.0  # tempo total de presença no mapa
+const WENDIGO_PATROL_SPEED        := 80.0  # velocidade de ronda
+const WENDIGO_PATROL_DETECT_RANGE := 180.0 # proximidade que dispara a perseguição
+const WENDIGO_CHARGE_SPEED        := 255.0
+const WENDIGO_CHARGE_DURATION     := 7.0   # tempo de perseguição antes de voltar a rondar
+const WENDIGO_COOLDOWN_MIN        := 38.0
+const WENDIGO_COOLDOWN_MAX        := 65.0
 
 const HUNGER_MAX := 100.0
 const THIRST_MAX := 100.0
@@ -110,9 +116,9 @@ enum MimicState {
 }
 
 enum WendigoState {
-	INACTIVE,  # aguardando cooldown
-	WARNING,   # brado ouvido — janela para o player se proteger
-	CHARGING,  # carregando em direção ao player
+	INACTIVE,    # aguardando cooldown
+	PATROLLING,  # rondando a região inferior do mapa (até 60s)
+	CHARGING,    # perseguindo o player
 }
 
 enum TutorialPhase {
@@ -167,6 +173,10 @@ const DARKWATCHER_LINES := [
 @onready var enemy_spawn: Marker2D = $Markers/EnemySpawn
 @onready var forest_enemy_spawn: Marker2D = $Markers/ForestEnemySpawn
 @onready var forest_enemy_route_markers: Node2D = $Markers/ForestEnemyRoute
+@onready var wendigo_spawn: Marker2D = $Markers/WendigoSpawn
+@onready var wendigo_route_markers: Node2D = $Markers/WendigoRoute
+@onready var wendigo_forest_spawn: Marker2D = $Markers/WendigoForestSpawn
+@onready var wendigo_forest_route_markers: Node2D = $Markers/WendigoForestRoute
 @onready var enemy_route_markers: Node2D = $Markers/EnemyRoute
 @onready var well: Area2D = $Well
 @onready var plots_container: Node2D = $CropField/Plots
@@ -275,6 +285,8 @@ var _darkwatcher_area: Area2D = null
 var _darkwatcher_dialogue_index := 0
 var _lantern_bought := false
 var _flashlight_active := false
+var _lantern_battery := LANTERN_BATTERY_MAX
+var _battery_recharged_today := false
 
 # — Alerta do gerador (timer para limpar a mensagem)
 var _generator_alert_timer := 0.0
@@ -290,6 +302,11 @@ var _mimic_flee_timer := 0.0
 # — Wendigo
 var _wendigo_state := WendigoState.INACTIVE
 var _wendigo_state_timer := 0.0
+var _wendigo_patrol_timer  := 0.0   # timer geral de presença (60s)
+var _wendigo_patrol_index  := 0     # waypoint atual da rota
+var _wendigo_route: Array[Vector2] = []
+var _wendigo_forest_route: Array[Vector2] = []
+var _wendigo_in_forest := false  # true quando o Wendigo desta aparição spawnou na floresta
 var _wendigo_node: Node2D = null
 var _wendigo_sprite: AnimatedSprite2D = null
 var _wendigo_appearances_tonight := 0
@@ -319,8 +336,9 @@ func _load_ui_textures() -> void:
 	TEX_BAR_TILE            = load("res://assets/interface/bar.png") as Texture2D
 	TEX_ICON_BUCKET         = load("res://assets/interface/icons/Milk_Bucket_JE2_BE2.png") as Texture2D
 	TEX_ICON_AXE            = load("res://assets/interface/icons/Diamond_Axe_JE3_BE3.png") as Texture2D
-	TEX_ICON_SEEDS          = load("res://assets/interface/icons/Wheat_JE2_BE2.png") as Texture2D
+	TEX_ICON_SEEDS          = load("res://assets/interface/icons/seed.png") as Texture2D
 	TEX_ICON_BREAD          = load("res://assets/interface/icons/Bread_JE3_BE3.webp") as Texture2D
+	TEX_ICON_FLASHLIGHT     = load("res://assets/interface/icons/flashlight.png") as Texture2D
 
 
 func _ready() -> void:
@@ -333,6 +351,7 @@ func _ready() -> void:
 	_cache_farm_plots()
 	_cache_enemy_route()
 	_cache_forest_enemy_route()
+	_cache_wendigo_route()
 	_create_runtime_farm_nodes()
 	_cache_tree_sources()
 	_setup_interaction_highlights()
@@ -377,6 +396,7 @@ func _process(delta: float) -> void:
 	_update_active_interaction()
 	_apply_survival_modifiers()
 	_update_anxiety(delta)
+	_update_flashlight_battery(delta)
 	_refresh_ui()
 	_update_reflector_light_shader()
 
@@ -843,6 +863,7 @@ func _advance_day_phase() -> void:
 		_wendigo_state = WendigoState.INACTIVE
 		_flashlight_active = false
 		player.set_flashlight_on(false)
+		_battery_recharged_today = false
 		if _day_number == 2 and _darkwatcher_phase == DarkwatcherPhase.INACTIVE:
 			_spawn_darkwatcher()
 	else:
@@ -933,6 +954,8 @@ func _update_wood_sources(delta: float) -> void:
 		source["hits"] = 0
 		var visual := source["visual"] as Sprite2D
 		visual.visible = true
+		visual.modulate = Color.WHITE
+		visual.rotation = 0.0
 		var body := source["body"] as StaticBody2D
 		if body != null:
 			body.collision_layer = 1
@@ -958,6 +981,19 @@ func _update_generator(delta: float) -> void:
 		_hostile_alert_text = "Os refletores apagaram."
 
 	_refresh_generator_visuals()
+
+
+func _update_flashlight_battery(delta: float) -> void:
+	# Auto-desliga se a lanterna não está selecionada na hotbar
+	if _flashlight_active and _get_selected_item_id() != ITEM_LANTERN:
+		_flashlight_active = false
+		player.set_flashlight_on(false)
+	# Drena bateria enquanto a lanterna está ligada
+	if _flashlight_active:
+		_lantern_battery = maxf(_lantern_battery - delta, 0.0)
+		if _lantern_battery <= 0.0:
+			_flashlight_active = false
+			player.set_flashlight_on(false)
 
 
 func _update_stove(delta: float) -> void:
@@ -1057,6 +1093,11 @@ func _update_hostile_event(delta: float) -> void:
 			if _hostile_state_timer <= 0.0 and not _is_transitioning:
 				_spawn_hostile_enemy()
 		HostileEventState.ACTIVE:
+			# Gerador ligado durante perseguição ativa: Goatman é forçado a recuar
+			if not _in_forest and _is_farm_defended() and is_instance_valid(_active_enemy):
+				_stop_hostile_event(true)
+				_hostile_alert_text = "Os refletores forçaram o Goatman a recuar!"
+				return
 			if _active_enemy == null and not _is_transitioning:
 				_hostile_state = HostileEventState.COOLDOWN
 				_hostile_state_timer = HOSTILE_COOLDOWN_DURATION
@@ -1077,10 +1118,15 @@ func _update_hostile_event(delta: float) -> void:
 
 func _begin_hostile_warning() -> void:
 	_hostile_state = HostileEventState.WARNING
-	_hostile_state_timer = NIGHT_WARNING_DELAY
+	# Duração do aviso antes do spawn: floresta tem tempo diferente por dia/noite
+	if _in_forest:
+		_hostile_state_timer = FOREST_DAY_WARNING_DURATION if not _is_night else FOREST_NIGHT_WARNING_DURATION
+	else:
+		_hostile_state_timer = NIGHT_WARNING_DELAY
 	_hostile_alert_text = "Um farfalhar entre as arvores. Algo espreitando." if _in_forest else "Um berrar ecoa alem da cerca."
-	_warning_plays_remaining = 5
-	if hostile_audio.stream != null:
+	# Som de aviso só toca se o gerador estiver desligado
+	if hostile_audio.stream != null and not _generator_active:
+		_warning_plays_remaining = 5
 		hostile_audio.play()
 
 
@@ -1095,6 +1141,12 @@ func _spawn_hostile_enemy() -> void:
 	hostile_audio.stop()
 	_clear_active_enemy()
 
+	# Fazenda protegida: gerador ligado bloqueia o spawn
+	if not _in_forest and _is_farm_defended():
+		_hostile_state = HostileEventState.COOLDOWN
+		_hostile_state_timer = HOSTILE_COOLDOWN_DURATION
+		return
+
 	var spawn_pos := forest_enemy_spawn.global_position if _in_forest else enemy_spawn.global_position
 	var route := _forest_hostile_route if _in_forest else _hostile_route
 	var is_forest_day := _in_forest and not _is_night
@@ -1103,23 +1155,30 @@ func _spawn_hostile_enemy() -> void:
 		_hostile_state = HostileEventState.IDLE
 		return
 
+	# Perseguição imediata: fazenda sem gerador, ou floresta à noite
+	# Floresta de dia: Goatman precisa ver o player (cone de visão)
+	var spotted_immediately := (not _in_forest and not _generator_active) or (_in_forest and _is_night)
+
 	_hostile_state = HostileEventState.ACTIVE
 	_hostile_alert_text = "O Goatman espreita entre as arvores." if _in_forest else "Goatman avancou pela escuridao."
 	_active_enemy = FarmEnemyScene.instantiate() as FarmEnemy
 	add_child(_active_enemy)
+	# Conectar sinais ANTES de start() para que player_spotted dispare corretamente
+	# quando spotted_immediately=true (o sinal é emitido dentro de start())
+	_active_enemy.route_finished.connect(_on_enemy_route_finished)
+	_active_enemy.player_caught.connect(_on_enemy_player_caught)
+	_active_enemy.repelled.connect(_on_enemy_repelled)
+	_active_enemy.player_spotted.connect(_on_goatman_player_spotted)
 	_active_enemy.start(
 		spawn_pos,
 		route,
 		player,
 		Callable(self, "_is_enemy_in_player_vision"),
-		Callable(self, "_is_position_in_light"),
+		Callable(),  # Goatman não é repelido por luz — isso é comportamento do Wendigo
 		110.0 if is_forest_day else FarmEnemy.MOVE_SPEED,
-		140.0 if is_forest_day else FarmEnemy.CHASE_SPEED
+		140.0 if is_forest_day else FarmEnemy.CHASE_SPEED,
+		spotted_immediately
 	)
-	_active_enemy.route_finished.connect(_on_enemy_route_finished)
-	_active_enemy.player_caught.connect(_on_enemy_player_caught)
-	_active_enemy.repelled.connect(_on_enemy_repelled)
-	_active_enemy.player_spotted.connect(_on_goatman_player_spotted)
 
 
 func _on_goatman_player_spotted() -> void:
@@ -1234,12 +1293,24 @@ func _stop_hostile_event(start_cooldown: bool) -> void:
 
 func _update_anxiety(delta: float) -> void:
 	var target_intensity := 0.0
+	# Ansiedade ambiente: baixa intensidade constante durante a noite
+	if _is_night and not _is_transitioning:
+		target_intensity = 0.15
 	if _anxiety_active and _hostile_state == HostileEventState.ACTIVE and is_instance_valid(_active_enemy):
 		var dist := player.global_position.distance_to(_active_enemy.global_position)
-		target_intensity = 1.0 - clamp(
+		var chase_intensity: float = 1.0 - clamp(
 			(dist - MIN_ANXIETY_DISTANCE) / (MAX_ANXIETY_DISTANCE - MIN_ANXIETY_DISTANCE),
 			0.0, 1.0
 		)
+		target_intensity = maxf(target_intensity, chase_intensity)
+	# Wendigo em perseguição também dispara ansiedade baseada em distância
+	if _wendigo_state == WendigoState.CHARGING and is_instance_valid(_wendigo_node):
+		var dist := player.global_position.distance_to(_wendigo_node.global_position)
+		var chase_intensity: float = 1.0 - clamp(
+			(dist - MIN_ANXIETY_DISTANCE) / (MAX_ANXIETY_DISTANCE - MIN_ANXIETY_DISTANCE),
+			0.0, 1.0
+		)
+		target_intensity = maxf(target_intensity, chase_intensity)
 
 	var speed := ANXIETY_FADE_IN_SPEED if _anxiety_current < target_intensity else ANXIETY_FADE_OUT_SPEED
 	_anxiety_current = move_toward(_anxiety_current, target_intensity, speed * delta)
@@ -1250,7 +1321,10 @@ func _update_anxiety(delta: float) -> void:
 		_anxiety_shader_mat.set_shader_parameter("intensity", _anxiety_current)
 		_anxiety_shader_mat.set_shader_parameter("pulse_time", _anxiety_pulse_time)
 		_tint_rect.color = Color(0.35, 0.03, 0.03, _anxiety_current * 0.18)
-		player.set_anxiety_intensity(_anxiety_current)
+		# Shake da câmera durante perseguição do Goatman ou do Wendigo
+		var wendigo_chasing := _wendigo_state == WendigoState.CHARGING and is_instance_valid(_wendigo_node)
+		var shake_intensity := _anxiety_current if (_anxiety_active or wendigo_chasing) else 0.0
+		player.set_anxiety_intensity(shake_intensity)
 	else:
 		_anxiety_layer.visible = false
 		_anxiety_current = 0.0
@@ -1295,6 +1369,9 @@ func _update_mimic(delta: float) -> void:
 				_generator_sabotaged = true
 				_generator_hits = 0
 				_hostile_alert_text = "Os refletores apagaram. O Mimic sabotou o gerador!"
+				# Garantir aviso completo antes do próximo spawn do Goatman
+				if _hostile_state == HostileEventState.IDLE:
+					_hostile_trigger_timer = NIGHT_WARNING_DELAY
 				_mimic_flee_timer = 4.0
 				_mimic_state = MimicState.FLEEING
 				return
@@ -1348,35 +1425,94 @@ func _clear_mimic() -> void:
 
 # ─── Wendigo ──────────────────────────────────────────────────────────────────
 
+func _cache_wendigo_route() -> void:
+	_wendigo_route.clear()
+	for child in wendigo_route_markers.get_children():
+		if child is Marker2D:
+			_wendigo_route.append((child as Marker2D).global_position)
+	_wendigo_forest_route.clear()
+	for child in wendigo_forest_route_markers.get_children():
+		if child is Marker2D:
+			_wendigo_forest_route.append((child as Marker2D).global_position)
+
+
 func _update_wendigo(delta: float) -> void:
 	if not _is_night or _wendigo_max_tonight <= 0:
 		return
 	if _wendigo_appearances_tonight >= _wendigo_max_tonight:
 		return
 
+	# Player mudou de contexto (entrou/saiu da floresta) enquanto Wendigo estava ativo
+	if _wendigo_state != WendigoState.INACTIVE and _in_forest != _wendigo_in_forest:
+		_clear_wendigo()
+		_resolve_wendigo_event()
+		return
+
 	match _wendigo_state:
 		WendigoState.INACTIVE:
 			_wendigo_cooldown_timer = max(_wendigo_cooldown_timer - delta, 0.0)
 			if _wendigo_cooldown_timer <= 0.0:
-				_begin_wendigo_warning()
-
-		WendigoState.WARNING:
-			_wendigo_state_timer = max(_wendigo_state_timer - delta, 0.0)
-			if _wendigo_state_timer <= 0.0:
 				_spawn_wendigo()
+
+		WendigoState.PATROLLING:
+			if not is_instance_valid(_wendigo_node):
+				_resolve_wendigo_event()
+				return
+
+			_wendigo_patrol_timer = max(_wendigo_patrol_timer - delta, 0.0)
+			if _wendigo_patrol_timer <= 0.0:
+				if _in_forest == _wendigo_in_forest:
+					_hostile_alert_text = "O Wendigo voltou para as sombras."
+				_clear_wendigo()
+				_resolve_wendigo_event()
+				return
+
+			# Foge da lanterna durante a ronda
+			if _is_position_in_light(_wendigo_node.global_position):
+				if _in_forest == _wendigo_in_forest:
+					_hostile_alert_text = "A luz afastou o Wendigo."
+				_clear_wendigo()
+				_resolve_wendigo_event()
+				return
+
+			# Inicia perseguição se o player se aproximar
+			if _wendigo_node.global_position.distance_to(player.global_position) <= WENDIGO_PATROL_DETECT_RANGE:
+				_wendigo_state = WendigoState.CHARGING
+				_wendigo_state_timer = WENDIGO_CHARGE_DURATION
+				if _in_forest == _wendigo_in_forest:
+					_hostile_alert_text = "O Wendigo avancou!"
+				return
+
+			# Ronda entre waypoints — usa rota da floresta quando aplicável
+			var active_wendigo_route := _wendigo_forest_route if _wendigo_in_forest else _wendigo_route
+			if not active_wendigo_route.is_empty():
+				var target := active_wendigo_route[_wendigo_patrol_index]
+				var dir := (target - _wendigo_node.global_position).normalized()
+				_wendigo_node.global_position = _wendigo_node.global_position.move_toward(target, WENDIGO_PATROL_SPEED * delta)
+				if _wendigo_node.global_position.distance_to(target) <= 4.0:
+					_wendigo_patrol_index = (_wendigo_patrol_index + 1) % active_wendigo_route.size()
+				_wendigo_update_sprite_dir(dir)
 
 		WendigoState.CHARGING:
 			if not is_instance_valid(_wendigo_node):
 				_resolve_wendigo_event()
 				return
 
-			_wendigo_state_timer = max(_wendigo_state_timer - delta, 0.0)
+			# Timer geral de presença continua contando durante a perseguição
+			_wendigo_patrol_timer = max(_wendigo_patrol_timer - delta, 0.0)
+			if _wendigo_patrol_timer <= 0.0:
+				if _in_forest == _wendigo_in_forest:
+					_hostile_alert_text = "O Wendigo voltou para as sombras."
+				_clear_wendigo()
+				_resolve_wendigo_event()
+				return
 
 			var wpos := _wendigo_node.global_position
 
-			# Luz repele o Wendigo
+			# Luz repele — único jeito de despawnar antes dos 60s
 			if _is_position_in_light(wpos):
-				_hostile_alert_text = "A luz afastou o Wendigo."
+				if _in_forest == _wendigo_in_forest:
+					_hostile_alert_text = "A luz afastou o Wendigo."
 				_clear_wendigo()
 				_resolve_wendigo_event()
 				return
@@ -1388,43 +1524,43 @@ func _update_wendigo(delta: float) -> void:
 				_start_player_expulsion()
 				return
 
-			# Tempo esgotado — desiste
+			# Chase timer esgotado — volta a rondar
+			_wendigo_state_timer = max(_wendigo_state_timer - delta, 0.0)
 			if _wendigo_state_timer <= 0.0:
-				_hostile_alert_text = "O Wendigo desapareceu na escuridao."
-				_clear_wendigo()
-				_resolve_wendigo_event()
+				if _in_forest == _wendigo_in_forest:
+					_hostile_alert_text = "Algo ronda as sombras ao sul..."
+				_wendigo_state = WendigoState.PATROLLING
 				return
 
 			var dir := (player.global_position - wpos).normalized()
 			_wendigo_node.global_position += dir * WENDIGO_CHARGE_SPEED * delta
-
-			# Atualiza direção da animação conforme o movimento
-			if is_instance_valid(_wendigo_sprite):
-				var anim: StringName
-				if absf(dir.x) >= absf(dir.y):
-					anim = &"run_east" if dir.x >= 0.0 else &"run_west"
-				else:
-					anim = &"run_south" if dir.y >= 0.0 else &"run_north"
-				if _wendigo_sprite.animation != anim:
-					_wendigo_sprite.play(anim)
+			_wendigo_update_sprite_dir(dir)
 
 
-func _begin_wendigo_warning() -> void:
-	_wendigo_state = WendigoState.WARNING
-	_wendigo_state_timer = WENDIGO_WARNING_DURATION
-	_hostile_alert_text = "Um brado atravessa a floresta. Algo se aproxima — fique na luz!"
+func _wendigo_update_sprite_dir(dir: Vector2) -> void:
+	if not is_instance_valid(_wendigo_sprite):
+		return
+	var anim: StringName
+	if absf(dir.x) >= absf(dir.y):
+		anim = &"run_east" if dir.x >= 0.0 else &"run_west"
+	else:
+		anim = &"run_south" if dir.y >= 0.0 else &"run_north"
+	if _wendigo_sprite.animation != anim:
+		_wendigo_sprite.play(anim)
 
 
 func _spawn_wendigo() -> void:
-	_wendigo_state = WendigoState.CHARGING
-	_wendigo_state_timer = WENDIGO_CHARGE_DURATION
-	_hostile_alert_text = "O Wendigo avancou!"
+	_wendigo_state = WendigoState.PATROLLING
+	_wendigo_patrol_timer = WENDIGO_PATROL_DURATION
+	_wendigo_patrol_index = 0
+	_wendigo_in_forest = _in_forest
+	# Alerta só aparece se o player estiver no mesmo contexto do Wendigo
+	if _in_forest == _wendigo_in_forest:
+		_hostile_alert_text = "Algo ronda as sombras ao sul..."
 
 	_wendigo_node = Node2D.new()
 	_wendigo_node.name = "Wendigo"
-	# Spawna do lado oposto ao player, fora do alcance dos refletores
-	var offset_dir := (player.global_position - Vector2(420, 520)).normalized()
-	_wendigo_node.global_position = player.global_position - offset_dir * 420.0
+	_wendigo_node.global_position = (wendigo_forest_spawn if _in_forest else wendigo_spawn).global_position
 
 	var wframes := SpriteFrames.new()
 	wframes.remove_animation(&"default")
@@ -1528,6 +1664,16 @@ func _is_position_in_light(world_position: Vector2) -> bool:
 			if dist < 1.0 or to_pos.normalized().dot(facing) >= FLASHLIGHT_CONE_DOT:
 				return true
 
+	return false
+
+
+## Verifica apenas os refletores do gerador (sem lanterna).
+## Usado pelo Goatman — quem foge da lanterna é o Wendigo.
+func _is_position_in_reflector_light(world_position: Vector2) -> bool:
+	if _generator_active and _generator_fuel > 0.0:
+		for reflector_position in _reflector_positions:
+			if world_position.distance_to(reflector_position) <= REFLECTOR_RADIUS:
+				return true
 	return false
 
 
@@ -1872,6 +2018,39 @@ func _show_inventory_full_alert() -> void:
 	_hostile_alert_text = "Inventario cheio! Abra [E] e libere espaco."
 
 
+func _shake_tree_visual(visual: Sprite2D) -> void:
+	var origin := visual.position
+	var tween := create_tween()
+	tween.tween_property(visual, "position", origin + Vector2(5, 0), 0.05)
+	tween.tween_property(visual, "position", origin + Vector2(-5, 0), 0.05)
+	tween.tween_property(visual, "position", origin + Vector2(3, 0), 0.04)
+	tween.tween_property(visual, "position", origin, 0.04)
+
+
+func _fell_tree_visual(visual: Sprite2D) -> void:
+	# Pivot na base do sprite: visual.position.y (-8) + metade do sprite (24) = 16
+	var tree_root := visual.get_parent() as Node2D
+	var original_pos := visual.position
+
+	var pivot := Node2D.new()
+	pivot.position = Vector2(0.0, 16.0)
+	tree_root.add_child(pivot)
+
+	visual.reparent(pivot, false)
+	visual.position = original_pos - pivot.position  # (0, -24)
+
+	var tween := create_tween()
+	tween.tween_property(pivot, "rotation", deg_to_rad(90.0), 0.5)
+	tween.parallel().tween_property(visual, "modulate:a", 0.0, 0.65)
+	tween.tween_callback(func() -> void:
+		visual.reparent(tree_root, false)
+		visual.position = original_pos
+		visual.rotation = 0.0
+		visual.visible = false
+		pivot.queue_free()
+	)
+
+
 func _harvest_wood_source(source_index: int) -> void:
 	var source := _wood_sources[source_index]
 	if not bool(source["available"]):
@@ -1886,7 +2065,9 @@ func _harvest_wood_source(source_index: int) -> void:
 	player.play_axe_swing(player.get_facing_direction())
 
 	source["hits"] = int(source["hits"]) + 1
+	var visual := source["visual"] as Sprite2D
 	if int(source["hits"]) < TREE_HITS_TO_FALL:
+		player.axe_impact.connect(func() -> void: _shake_tree_visual(visual), CONNECT_ONE_SHOT)
 		return
 
 	if not _add_item(ITEM_WOOD, "Lenha", WOOD_PER_CHOP):
@@ -1896,12 +2077,11 @@ func _harvest_wood_source(source_index: int) -> void:
 	source["available"] = false
 	source["respawn_timer"] = TREE_RESPAWN_DURATION
 	source["hits"] = 0
-	var visual := source["visual"] as Sprite2D
-	visual.visible = false
 	var body := source["body"] as StaticBody2D
 	if body != null:
 		body.collision_layer = 0
 		body.collision_mask = 0
+	player.axe_impact.connect(func() -> void: _fell_tree_visual(visual), CONNECT_ONE_SHOT)
 
 
 func _interact_with_plot(plot_index: int) -> void:
@@ -1981,8 +2161,11 @@ func _try_use_selected_item() -> void:
 				_thirst = min(_thirst + 18.0, THIRST_MAX)
 				_health = min(_health + 2.0, HEALTH_MAX)
 		ITEM_LANTERN:
-			_flashlight_active = not _flashlight_active
-			player.set_flashlight_on(_flashlight_active)
+			if not _flashlight_active and _lantern_battery <= 0.0:
+				pass  # bateria descarregada — não liga
+			else:
+				_flashlight_active = not _flashlight_active
+				player.set_flashlight_on(_flashlight_active)
 
 
 func _refresh_ui() -> void:
@@ -1991,7 +2174,9 @@ func _refresh_ui() -> void:
 	coins_label.text = "Moedas: %d" % _coins
 	var lantern_suffix := ""
 	if _get_selected_item_id() == ITEM_LANTERN:
-		lantern_suffix = "  [%s]" % ("LIGADA" if _flashlight_active else "DESLIGADA")
+		var bat_pct := int(_lantern_battery / LANTERN_BATTERY_MAX * 100.0)
+		var state_str := "LIGADA" if _flashlight_active else ("SEM BATERIA" if _lantern_battery <= 0.0 else "DESLIGADA")
+		lantern_suffix = "  [%s | Bat: %d%%]" % [state_str, bat_pct]
 	inventory_label.text = "Equipado: %s%s | Q usa item | %s" % [_get_selected_slot_label(), lantern_suffix, _get_seed_stock_text()]
 	_refresh_stamina_ui()
 	_refresh_hotbar_ui()
@@ -2216,7 +2401,7 @@ func _setup_inventory() -> void:
 		ITEM_SEEDS:   TEX_ICON_SEEDS,
 		ITEM_CROP:    TEX_ICON_SEEDS,
 		ITEM_BREAD:   TEX_ICON_BREAD,
-		ITEM_LANTERN: null,  # PLACEHOLDER — substituir quando asset disponível
+		ITEM_LANTERN: TEX_ICON_FLASHLIGHT,
 	}
 	_inventory_data = InventoryData.new()
 	_inventory_ui   = InventoryUI.new(_inventory_data, _item_icon_map)
@@ -2225,11 +2410,15 @@ func _setup_inventory() -> void:
 	_inventory_ui.set_hotbar(_hotbar)
 	_inventory_ui.closed.connect(_on_inventory_closed)
 
+	var _dw_items := [
+		{"id": ITEM_LANTERN, "name": "Lanterna",       "short": "Lnt", "price": 200, "icon": TEX_ICON_FLASHLIGHT},
+		{"id": "bateria",    "name": "Recarga Bateria", "short": "Bat", "price": 100, "icon": null},
+	]
 	_darkwatcher_shop_ui = DarkwatcherShopUIScript.new(
 		func() -> int: return _coins,
 		_try_buy_from_darkwatcher,
-		func() -> bool: return _lantern_bought,
-		null  # PLACEHOLDER — passar Texture2D da lanterna quando disponível
+		_can_buy_from_darkwatcher,
+		_dw_items,
 	)
 	add_child(_darkwatcher_shop_ui)
 	_darkwatcher_shop_ui.closed.connect(_on_darkwatcher_shop_closed)
@@ -2262,14 +2451,33 @@ func _on_darkwatcher_shop_closed() -> void:
 	player.set_movement_locked(false)
 
 
+func _can_buy_from_darkwatcher(item_id: String) -> bool:
+	match item_id:
+		ITEM_LANTERN:
+			return not _lantern_bought
+		"bateria":
+			return _lantern_bought and not _battery_recharged_today
+	return false
+
+
 func _try_buy_from_darkwatcher(item_id: String, price: int) -> bool:
-	if _lantern_bought:
-		return false
 	if _coins < price:
 		return false
-	_coins -= price
-	_add_item(item_id, "Lanterna", 1)
-	_lantern_bought = true
+	match item_id:
+		ITEM_LANTERN:
+			if _lantern_bought:
+				return false
+			_coins -= price
+			_add_item(ITEM_LANTERN, "Lanterna", 1)
+			_lantern_bought = true
+		"bateria":
+			if not _lantern_bought or _battery_recharged_today:
+				return false
+			_coins -= price
+			_lantern_battery = LANTERN_BATTERY_MAX
+			_battery_recharged_today = true
+		_:
+			return false
 	return true
 
 
@@ -2462,6 +2670,8 @@ func _get_item_icon_texture(item_id: String) -> Texture2D:
 			return TEX_ICON_SEEDS
 		ITEM_BREAD:
 			return TEX_ICON_BREAD
+		ITEM_LANTERN:
+			return TEX_ICON_FLASHLIGHT
 		_:
 			return null
 

@@ -6,7 +6,8 @@
       "Bash(powershell -File:*)",
       "Bash(python3 -c \":*)",
       "Bash(python -c \":*)",
-      "Bash(grep -n \"class_name\\\\|extends\" \"C:\\\\Users\\\\Made by Felipe\\\\Documents\\\\Fleshwoods\\\\scripts\"/*.gd)"
+      "Bash(grep -n \"class_name\\\\|extends\" \"C:\\\\Users\\\\Made by Felipe\\\\Documents\\\\Fleshwoods\\\\scripts\"/*.gd)",
+      "Bash(python3 /tmp/write_claude.py)"
     ]
   }
 }

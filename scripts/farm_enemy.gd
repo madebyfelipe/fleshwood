@@ -69,7 +69,7 @@ func _build_sprite_frames() -> SpriteFrames:
 	return sf
 
 
-func start(spawn_position: Vector2, route_points: Array[Vector2], player: Node2D, vision_check: Callable, light_check: Callable, move_speed: float = MOVE_SPEED, chase_speed: float = CHASE_SPEED) -> void:
+func start(spawn_position: Vector2, route_points: Array[Vector2], player: Node2D, vision_check: Callable, light_check: Callable, move_speed: float = MOVE_SPEED, chase_speed: float = CHASE_SPEED, spotted: bool = false) -> void:
 	_move_speed  = move_speed
 	_chase_speed = chase_speed
 	global_position = spawn_position
@@ -78,13 +78,15 @@ func start(spawn_position: Vector2, route_points: Array[Vector2], player: Node2D
 	_player = player
 	_vision_check = vision_check
 	_light_check = light_check
-	_has_spotted_player = false
+	_has_spotted_player = spotted
 	_is_repelled = false
 	_retreat_target = spawn_position
-	_is_active = not _route_points.is_empty()
+	_is_active = not _route_points.is_empty() or spotted
 	set_process(_is_active)
 
-	if not _is_active:
+	if spotted:
+		player_spotted.emit()
+	elif not _is_active:
 		route_finished.emit()
 
 
@@ -92,7 +94,7 @@ func _process(delta: float) -> void:
 	if not _is_active:
 		return
 
-	if not _has_spotted_player and _light_check.is_valid() and _light_check.call(global_position):
+	if _light_check.is_valid() and _light_check.call(global_position):
 		_is_repelled = true
 
 	if _is_repelled:

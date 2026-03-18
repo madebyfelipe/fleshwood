@@ -1,6 +1,8 @@
 extends CharacterBody2D
 class_name PlayerController
 
+signal axe_impact
+
 enum MovementState {
 	NORMAL,
 	SPRINTING,
@@ -348,9 +350,8 @@ func _update_camera_anchor(delta: float = 0.0) -> void:
 
 func set_held_item(item_id: String, short_label: String, color: Color) -> void:
 	held_item_label.text = short_label
-	held_item_visual.color = color
-	held_item_visual.visible = item_id != ""
-	held_item_label.visible = item_id != ""
+	held_item_visual.visible = false
+	held_item_label.visible = false
 
 
 func get_stamina_ratio() -> float:
@@ -391,6 +392,7 @@ func _on_animation_finished() -> void:
 func _on_frame_changed() -> void:
 	if _is_swinging and animated_sprite.frame == 5:
 		_swing_axe_player.play()
+		axe_impact.emit()
 
 
 func _update_animation_state() -> void:
